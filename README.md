@@ -34,8 +34,9 @@ core you pull as a package, plus one thin config file you actually edit.
 
 > Requires **ESPHome 2025.8.0+**.
 
-1. Copy `secrets.example.yaml` to `secrets.yaml` and fill in your Wi-Fi and a
-   freshly generated API encryption key.
+1. Copy `secrets.example.yaml` to `secrets.yaml` and fill in your Wi-Fi. The
+   native API is unencrypted by default; enable encryption in `base/core.yaml`
+   if you want it (see the commented block there).
 2. Copy **`waveshare-va.yaml`** next to it and edit the `substitutions:` at the
    top (device name, timezone, volume limits). That thin file is the only
    firmware file you keep. The core and the patched component are **pulled from

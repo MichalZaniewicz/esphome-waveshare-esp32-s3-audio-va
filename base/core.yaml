@@ -196,8 +196,11 @@ debug:
 
 api:
   id: api_id
-  encryption:
-    key: !secret api_encryption_key
+  # No encryption: this is a LAN-only device on a trusted network, same as the
+  # sibling Guition project. To lock it down, add:
+  #   encryption:
+  #     key: !secret api_encryption_key
+  # and put the base64 key in your dashboard's secrets.
   actions:
     - action: set_led_color
       variables:

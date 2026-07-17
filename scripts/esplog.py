@@ -9,8 +9,10 @@ makes chasing a boot-time I2C failure miserable. This just prints the log.
     python esplog.py 60              # 60 s
     python esplog.py 60 es7210       # 60 s, only lines containing "es7210"
 
-Host and the API key are read from the environment, then from a secrets.yaml
-sitting next to this script or in a parent directory:
+Host is read from the environment (default below otherwise). The API is
+unencrypted by default; if you enabled encryption, drop the base64 key into a
+secrets.yaml near this script (or set ESPLOG_KEY) and it is picked up
+automatically:
 
     ESPLOG_HOST=192.168.1.42 python esplog.py
 """
