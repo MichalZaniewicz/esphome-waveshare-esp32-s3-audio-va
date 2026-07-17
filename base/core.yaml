@@ -60,7 +60,11 @@ substitutions:
   i2s_bps_spk: 16bit
   i2s_bps_mic: 16bit
   i2s_use_apll: 'true'
-  i2s_mclk_multiple: '256'  # 128 | 256 | 384 | 512
+  # Unquoted on purpose: the i2s_audio mclk_multiple validator is a plain
+  # cv.one_of(128, 256, 384, 512) with no int coercion, so it needs an integer.
+  # A quoted '256' resolves to the string "256" and fails with the maddening
+  # "Unknown value '256', did you mean '256'?".
+  i2s_mclk_multiple: 256    # 128 | 256 | 384 | 512
 
   # Which I2S slot the mic capsule lands in: left | right | stereo.
   # NOTE: `mic_channel` (below) picks the slot on the i2s_audio microphone.
