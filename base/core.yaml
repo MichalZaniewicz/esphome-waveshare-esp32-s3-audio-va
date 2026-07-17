@@ -433,16 +433,16 @@ micro_wake_word:
     channels: ${mic_va_channel}
   stop_after_detection: false
   models:
-    - model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/alexa.json
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/alexa.json
       id: alexa
-    - model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/okay_nabu.json
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/okay_nabu.json
       id: okay_nabu
     # "stop" interrupts a long TTS reply; enabled only while one is playing.
     - model: https://github.com/OHF-Voice/micro-wake-word/releases/download/stop-20241016.2/stop.json
       id: stop
       internal: true
   vad:
-    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/vad.json
+    model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
     # Muted (software mute switch)? Do nothing at all.
     - if:
@@ -1116,7 +1116,7 @@ switch:
 
   - platform: template
     id: mute_sound
-    name: Mute/unmute sound
+    name: Mute and unmute sound
     icon: "mdi:bullhorn"
     entity_category: config
     optimistic: true
