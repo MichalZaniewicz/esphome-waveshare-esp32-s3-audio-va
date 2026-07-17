@@ -1,0 +1,15 @@
+# Secrets — never commit Wi-Fi / API / OTA credentials
+secrets.yaml
+
+# ESPHome build cache & artifacts
+.esphome/
+*.bin
+
+# Python
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

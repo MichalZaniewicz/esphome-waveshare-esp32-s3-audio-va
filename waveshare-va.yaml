@@ -1,0 +1,47 @@
+# =============================================================================
+# Waveshare ESP32-S3-AUDIO-Board voice assistant - YOUR config.
+# This thin file is the only firmware file you keep locally.
+# -----------------------------------------------------------------------------
+# Put this file next to a secrets.yaml (copy secrets.example.yaml), edit the
+# substitutions below, then:
+#
+#   esphome run waveshare-va.yaml
+#
+# Everything else - the core config and the patched es8311 component - is pulled
+# from GitHub at compile time (see the `packages:` block), so this is the only
+# file you ever maintain. To pick up the latest changes later:
+#
+#   esphome clean waveshare-va.yaml   # clears the package cache
+#   esphome run   waveshare-va.yaml
+# =============================================================================
+
+substitutions:
+  name: waveshare-va
+  friendly_name: "Waveshare Voice"
+
+  # Clock timezone, POSIX form (the device has no IANA database). Copy yours from
+  # https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv - DST is
+  # then handled automatically. HA can also push a zone via the set_time_zone
+  # action, which overrides this and is remembered across reboots.
+  posix_timezone: "CET-1CEST,M3.5.0,M10.5.0/3"   # Europe/Warsaw
+
+  # Onboard amplifier volume clamps. The little speaker distorts near the top,
+  # so the media player is limited to this window (0.0 - 1.0).
+  volume_min: '0.4'
+  volume_max: '0.8'
+
+  # Set to 'true' only if your SSID is hidden.
+  hidden_ssid: 'false'
+
+  # Mic gain, LED brightness, wake-word sensitivity and the alarm are all
+  # exposed as entities in Home Assistant - no need to reflash to change them.
+
+packages:
+  core:
+    url: https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va
+    ref: main
+    files:
+      - base/core.yaml
+    refresh: 0s     # always pull the latest; set to e.g. 1d once it stabilises
+
+# Wi-Fi and the API key come from your local secrets.yaml.
