@@ -74,13 +74,13 @@ def main() -> int:
         try:
             doc = yaml.safe_load(text)
         except yaml.YAMLError as exc:
-            print(f"  FAIL  YAML nie parsuje sie:\n{exc}")
+            print(f"  FAIL  YAML does not parse:\n{exc}")
             problems += 1
             continue
-        print("  OK    YAML parsuje sie")
+        print("  OK    YAML parses")
 
         if not isinstance(doc, dict):
-            print("  FAIL  plik nie jest mapa na najwyzszym poziomie")
+            print("  FAIL  top level is not a mapping")
             problems += 1
             continue
 
@@ -95,19 +95,19 @@ def main() -> int:
 
         undefined = sorted(used - set(subs) - BUILTIN_SUBS)
         if undefined:
-            print(f"  FAIL  uzyte, ale niezdefiniowane: {', '.join(undefined)}")
+            print(f"  FAIL  used but never defined: {', '.join(undefined)}")
             problems += 1
         else:
-            print("  OK    kazde ${...} ma swoja substitution")
+            print("  OK    every ${...} has a substitution")
 
         # A thin config exists precisely to define substitutions for a remote
         # package, so "unused here" says nothing. Only flag it on a standalone.
         if "packages" in doc:
-            print("  SKIP  nieuzywane substitutions (plik karmi pakiet)")
+            print("  SKIP  unused substitutions (this file feeds a package)")
         else:
             unused = sorted(set(subs) - used - BUILTIN_SUBS)
             if unused:
-                print(f"  WARN  zdefiniowane, ale nieuzywane: {', '.join(unused)}")
+                print(f"  WARN  defined but never used: {', '.join(unused)}")
 
         # 3. Duplicate ids
         ids = {}
@@ -115,10 +115,10 @@ def main() -> int:
         dupes = {k: v for k, v in ids.items() if len(v) > 1}
         if dupes:
             for dupe, where in dupes.items():
-                print(f"  FAIL  zduplikowane id '{dupe}': {'; '.join(where)}")
+                print(f"  FAIL  duplicate id '{dupe}': {'; '.join(where)}")
             problems += 1
         else:
-            print(f"  OK    {len(ids)} unikalnych id, brak kolizji")
+            print(f"  OK    {len(ids)} unique ids, no collisions")
 
     print("\n" + ("FAILED" if problems else "ALL GOOD"))
     return 1 if problems else 0
