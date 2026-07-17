@@ -6,14 +6,10 @@
 # with announcements, the 7x WS2812 status ring, the three onboard buttons (via
 # the TCA9555 expander) and voice timers + an alarm clock.
 #
-# WHY THIS REPO SHIPS A PATCHED es8311
-# The board wires the ES8311 (DAC) and the ES7210 (ADC) to the SAME I2S clock
-# pins (BCLK/LRCLK), so only one peripheral may generate the clocks. ESPHome's
-# stock es8311 cannot be made the I2S master, which makes simultaneous capture +
-# playback impossible. components/es8311/ is a fork adding `force_master` (codec
-# drives the clocks, ESP32 and ADC stay slaves) and `mclk_multiple` (correct
-# MCLK/BCLK maths). Both options are NOT in upstream ESPHome as of 2026-07.
-# Origin + credits: see components/es8311/README.md, pinout: docs/HARDWARE.md.
+# AUDIO LAYOUT
+# One full-duplex I2S bus with the ESP32 as master; the ES8311 (DAC) and ES7210
+# (ADC) both slave to it, so capture and playback run at once on stock ESPHome
+# components. Pinout: docs/HARDWARE.md.
 ###############################################################################
 
 substitutions:
@@ -36,8 +32,8 @@ substitutions:
   # unless you are on a different board.
   # ---------------------------------------------------------------------------
   i2s_mclk: GPIO12
-  i2s_bclk: GPIO13          # SCLK - shared by the DAC and the ADC
-  i2s_lrclk: GPIO14         # LRCK/WS - shared by the DAC and the ADC
+  i2s_bclk: GPIO13          # SCLK
+  i2s_lrclk: GPIO14         # LRCK/WS
   i2s_din: GPIO15           # ES7210 -> ESP (mic in)
   i2s_dout: GPIO16          # ESP -> ES8311 (speaker out)
   i2c_sda: GPIO11
@@ -53,29 +49,6 @@ substitutions:
   key3_exio: '11'           # volume up
 
   # ---------------------------------------------------------------------------
-  # Audio format. 16 kHz is mandatory for the Assist pipeline; the mic and the
-  # speaker must agree because they share one I2S clock pair.
-  # ---------------------------------------------------------------------------
-  i2s_sample_rate: '16000'
-  i2s_bps_spk: 16bit
-  i2s_bps_mic: 16bit
-  i2s_use_apll: 'true'
-  # Unquoted on purpose: the i2s_audio mclk_multiple validator is a plain
-  # cv.one_of(128, 256, 384, 512) with no int coercion, so it needs an integer.
-  # A quoted '256' resolves to the string "256" and fails with the maddening
-  # "Unknown value '256', did you mean '256'?".
-  i2s_mclk_multiple: 256    # 128 | 256 | 384 | 512
-
-  # Which I2S slot the mic capsule lands in: left | right | stereo.
-  # NOTE: `mic_channel` (below) picks the slot on the i2s_audio microphone.
-  # `mic_va_channel` is something DIFFERENT: it is an INDEX into the resulting
-  # stream, handed to voice_assistant/micro_wake_word (a MicrophoneSource), not
-  # a channel count. left|right => 1 channel => index 0 is the only valid value.
-  # Assist does not accept a stereo source, so keep this at left + 0.
-  mic_channel: left
-  mic_va_channel: '0'
-
-  # ---------------------------------------------------------------------------
   # Home Assistant / network
   # ---------------------------------------------------------------------------
   hidden_ssid: 'false'      # true = fast_connect, required for a hidden SSID
@@ -89,11 +62,6 @@ substitutions:
   # action overwrites this at runtime (persisted). Grab yours from
   # https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
   posix_timezone: "UTC0"
-
-  # Where the patched es8311 component is pulled from. Point these at your own
-  # fork if you fork this repo.
-  components_url: https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va
-  components_ref: main
 
 esphome:
   name: ${name}
@@ -168,16 +136,6 @@ esp32:
 psram:
   mode: octal
   speed: 80MHz
-
-# The patched DAC component. `refresh: 0s` always re-pulls it; pin `ref:` to a
-# tag once you stop iterating.
-external_components:
-  - source:
-      type: git
-      url: ${components_url}
-      ref: ${components_ref}
-    components: [es8311]
-    refresh: 0s
 
 wifi:
   id: wifi_id
@@ -275,82 +233,55 @@ time:
     on_time_sync:
       - script.execute: publish_current_time
 
+# ONE full-duplex I2S bus, ESP32 as master. The ES8311 (DAC) and ES7210 (ADC)
+# both slave to the ESP's BCLK/LRCLK, so capture and playback run together
+# without the clock contention that a two-bus setup has. This is the layout the
+# jensenbox config uses on this exact board, and it is why stock ESPHome
+# components work here with no patched es8311 / force_master.
+i2s_audio:
+  - id: i2s_audio_bus
+    i2s_mclk_pin: ${i2s_mclk}
+    i2s_bclk_pin: ${i2s_bclk}
+    i2s_lrclk_pin: ${i2s_lrclk}
+
 audio_adc:
   - platform: es7210
     id: adc_mic
     i2c_id: internal_i2c
-    sample_rate: ${i2s_sample_rate}
-    bits_per_sample: ${i2s_bps_mic}
-    # Keep in sync with the `mic_gain_db` number below (that entity is the
-    # runtime source of truth). The ES7210 caps at 37.5 dB - higher values are
-    # silently clamped by the driver.
+    # Runtime gain lives on the `mic_gain_db` number below. The ES7210 caps at
+    # 37.5 dB; higher values are silently clamped by the driver.
     mic_gain: 24db
 
 audio_dac:
   - platform: es8311
     id: es8311_dac
     i2c_id: internal_i2c
-    use_mclk: true
-    sample_rate: ${i2s_sample_rate}
-    bits_per_sample: ${i2s_bps_spk}
-    force_master: true            # patched option - codec drives BCLK/LRCLK
-    mclk_multiple: ${i2s_mclk_multiple}
-
-i2s_audio:
-  # Two logical buses over one physical clock pair. `allow_other_uses` is what
-  # lets the same BCLK/LRCLK pins appear in both.
-  - id: i2s_output
-    i2s_lrclk_pin:
-      number: ${i2s_lrclk}
-      allow_other_uses: true
-    i2s_bclk_pin:
-      number: ${i2s_bclk}
-      allow_other_uses: true
-    i2s_mclk_pin:
-      number: ${i2s_mclk}
-  - id: i2s_input
-    i2s_lrclk_pin:
-      number: ${i2s_lrclk}
-      allow_other_uses: true
-    i2s_bclk_pin:
-      number: ${i2s_bclk}
-      allow_other_uses: true
 
 microphone:
   - platform: i2s_audio
     id: i2s_mics
+    i2s_audio_id: i2s_audio_bus
     i2s_din_pin: ${i2s_din}
     adc_type: external
     pdm: false
-    i2s_audio_id: i2s_input
-    i2s_mode: secondary         # the ES8311 is the master, never the ESP
-    sample_rate: ${i2s_sample_rate}
-    bits_per_sample: ${i2s_bps_mic}
-    use_apll: ${i2s_use_apll}
-    mclk_multiple: ${i2s_mclk_multiple}
-    channel: ${mic_channel}
 
 speaker:
   - platform: i2s_audio
     id: i2s_audio_speaker
+    i2s_audio_id: i2s_audio_bus
     i2s_dout_pin: ${i2s_dout}
-    i2s_audio_id: i2s_output
-    i2s_mode: secondary         # ditto - the patched es8311 takes command
     dac_type: external
     audio_dac: es8311_dac
     timeout: never
     buffer_duration: 100ms
-    sample_rate: ${i2s_sample_rate}
-    bits_per_sample: ${i2s_bps_spk}
-    use_apll: ${i2s_use_apll}
-    mclk_multiple: ${i2s_mclk_multiple}
-    channel: stereo
 
   # Mixes the announcement and media pipelines into the one physical output.
+  # Mono: the board has a single speaker (mono ES8311 + NS4150B), so a second
+  # channel would just be discarded.
   - platform: mixer
     id: mixing_speaker
     output_speaker: i2s_audio_speaker
-    num_channels: 2
+    num_channels: 1
     source_speakers:
       - id: announcement_mixing_input
         timeout: never
@@ -381,6 +312,7 @@ media_player:
     media_pipeline:
       speaker: media_resampling_speaker
       format: FLAC
+      num_channels: 1           # mono hardware, one speaker
       sample_rate: 48000
     on_announcement:
       - mixer_speaker.apply_ducking:
@@ -428,9 +360,7 @@ media_player:
 
 micro_wake_word:
   id: mww
-  microphone:
-    microphone: i2s_mics
-    channels: ${mic_va_channel}
+  microphone: i2s_mics
   stop_after_detection: false
   models:
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/alexa.json
@@ -486,9 +416,7 @@ micro_wake_word:
 
 voice_assistant:
   id: va
-  microphone:
-    microphone: i2s_mics
-    channels: ${mic_va_channel}
+  microphone: i2s_mics
   media_player: external_media_player
   micro_wake_word: mww
   use_wake_word: false
