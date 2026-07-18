@@ -233,16 +233,34 @@ time:
     on_time_sync:
       - script.execute: publish_current_time
 
-# ONE full-duplex I2S bus, ESP32 as master. The ES8311 (DAC) and ES7210 (ADC)
-# both slave to the ESP's BCLK/LRCLK, so capture and playback run together
-# without the clock contention that a two-bus setup has. This is the layout the
-# jensenbox config uses on this exact board, and it is why stock ESPHome
-# components work here with no patched es8311 / force_master.
+# The DAC and ADC share BCLK/LRCLK pins, but ESPHome's i2s_audio cannot run one
+# bus full-duplex (the mic and speaker each call i2s_new_channel on the port, and
+# the second fails with "Parent bus is busy"). So we use TWO buses (two I2S ports)
+# over the shared pins:
+#   - i2s_input  = the MIC bus, I2S MASTER. The mic is always capturing (wake
+#     word), so it drives BCLK/LRCLK/MCLK continuously. Using the ESP as master
+#     is what makes the mic get a correct-rate stream (a codec-mastered clock via
+#     force_master gave the mic garbage and killed wake word).
+#   - i2s_output = the SPEAKER bus, I2S SLAVE. It reads the mic's clock and only
+#     needs to output data, so it never contends for a port of its own.
+# The ES8311 (DAC) and ES7210 (ADC) are stock and slave to the mic's clock; no
+# patched es8311 / force_master is needed.
 i2s_audio:
-  - id: i2s_audio_bus
+  - id: i2s_input
     i2s_mclk_pin: ${i2s_mclk}
-    i2s_bclk_pin: ${i2s_bclk}
-    i2s_lrclk_pin: ${i2s_lrclk}
+    i2s_bclk_pin:
+      number: ${i2s_bclk}
+      allow_other_uses: true
+    i2s_lrclk_pin:
+      number: ${i2s_lrclk}
+      allow_other_uses: true
+  - id: i2s_output
+    i2s_bclk_pin:
+      number: ${i2s_bclk}
+      allow_other_uses: true
+    i2s_lrclk_pin:
+      number: ${i2s_lrclk}
+      allow_other_uses: true
 
 audio_adc:
   - platform: es7210
@@ -260,16 +278,18 @@ audio_dac:
 microphone:
   - platform: i2s_audio
     id: i2s_mics
-    i2s_audio_id: i2s_audio_bus
+    i2s_audio_id: i2s_input
     i2s_din_pin: ${i2s_din}
     adc_type: external
     pdm: false
+    # default i2s_mode: primary -> this bus masters the shared clock
 
 speaker:
   - platform: i2s_audio
     id: i2s_audio_speaker
-    i2s_audio_id: i2s_audio_bus
+    i2s_audio_id: i2s_output
     i2s_dout_pin: ${i2s_dout}
+    i2s_mode: secondary          # slave to the mic bus's clock
     dac_type: external
     audio_dac: es8311_dac
     timeout: never
