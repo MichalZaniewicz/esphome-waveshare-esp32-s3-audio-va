@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.0.0] - 2026-07-18
+
+First stable release. The full voice assistant is confirmed on hardware, the
+regressions found during bring-up testing are fixed, and the project ships with
+complete documentation and a wiki. Tagged `v1.0.0`; the example config pins this
+tag so a build is reproducible instead of tracking a moving `main`.
+
+### Fixed
+- **Boot loop into safe mode after selecting a ring effect.** The three
+  effect selects restore their saved option during `setup()` (at HARDWARE
+  priority), which fired `on_value` and ran the LED state machine before the
+  light/RMT and voice_assistant were initialised, painting an effect on an
+  uninitialised strip and crashing the boot. The `on_value` is now gated on
+  `init_in_progress` (cleared by `on_boot` at priority -100), so it only runs
+  once setup is complete; a live effect change from HA still repaints the ring.
+
+### Changed
+- **Boot chime is now a bundled sound, not the wake-word beep.**
+  `base/sounds/startup.mp3` (16 kHz mono, ~11 KB) plays on connect to HA and is
+  swappable through the `boot_sound_file` substitution (any URL or local
+  MP3/FLAC/WAV; the media player decodes all three).
+
+### Removed
+- **The Flicker ring effect** (weak visually); 15 effects remain.
+
 ## [0.2.0] - 2026-07-18
 
 First on-hardware bring-up. The full voice assistant works: on-device wake word,
@@ -31,8 +56,8 @@ STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
   "Thinking effect" and "Replying effect" selects choose the animation for those
   voice-assistant phases (the phase colour stays fixed). 15 effects to choose
   from: solid, three pulses, Breathe, Wipe, Scan, Spinner, Comet, Twinkle,
-  Random Twinkle, Fireworks, Fire, and two rainbows. Breathe / Scan /
-  Spinner / Comet / Fire are custom `addressable_lambda` effects.
+  Random Twinkle, Fireworks, Fire, and two rainbows. Breathe / Spinner /
+  Comet / Fire are custom `addressable_lambda` effects.
 
 ### Fixed
 - **The Pulse LED effects showed a solid colour instead of pulsing.** Their

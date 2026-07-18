@@ -39,9 +39,9 @@ substitutions:
 packages:
   core:
     url: https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va
-    ref: main
+    ref: v1.0.0     # pinned release; bump to a newer tag, or use 'main' to track latest
     files:
       - base/core.yaml
-    refresh: 0s     # always pull the latest; set to e.g. 1d once it stabilises
+    refresh: 1d      # re-check the ref daily (a pinned tag never moves anyway)
 
 # Wi-Fi and the API key come from your local secrets.yaml.

@@ -1,3 +1,5 @@
+![ESPHome and Home Assistant voice assistant on the Waveshare ESP32-S3-AUDIO-Board](docs/hero.jpg)
+
 # ESPHome Voice Assistant for the Waveshare ESP32-S3-AUDIO-Board
 
 A **Home Assistant voice satellite** running on the
@@ -6,8 +8,10 @@ the little AI smart-speaker devkit with a dual-mic array, an ES8311 codec, three
 buttons and a 7-LED RGB ring. Pure ESPHome, no custom C firmware: an always-on
 core you pull as a package, plus one thin config file you actually edit.
 
-> **Status: working on hardware.** Wake word, STT/TTS, clean playback and the LED
-> ring are confirmed on-device. See [CHANGELOG.md](CHANGELOG.md) for the history.
+> **Status: stable (v1.0.0).** Wake word, STT/TTS, clean playback and the LED
+> ring are confirmed on-device. Full docs are in the
+> [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki);
+> the release history is in [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -51,8 +55,22 @@ core you pull as a package, plus one thin config file you actually edit.
    assign an Assist pipeline.
 5. Say "Alexa" (or "OK Nabu"). The ring should go violet.
 
-To pull later changes: `esphome clean waveshare-va.yaml` (clears the package
-cache), then `esphome run waveshare-va.yaml`.
+The example config pins the `v1.0.0` release tag, so a build is reproducible. To
+move to a newer release, bump `ref:` in the `packages:` block to a later tag (or
+`main` to track the latest), then `esphome clean waveshare-va.yaml` (clears the
+package cache) and `esphome run waveshare-va.yaml`.
+
+## Documentation
+
+The [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki)
+has the full guide:
+
+- **[Installation](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Installation)**: first flash, Home Assistant setup, updating.
+- **[Configuration](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Configuration)**: every substitution and every Home Assistant entity.
+- **[Audio architecture](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Audio-architecture)**: the shared-I2S two-bus design, in depth.
+- **[LED ring](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/LED-ring)**: the state machine and all 15 effects.
+- **[Hardware](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Hardware)**: pinout, I2C map, and sourced gotchas.
+- **[Troubleshooting](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Troubleshooting)** and **[FAQ](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/FAQ)**.
 
 ## How the shared I2S bus is handled
 
