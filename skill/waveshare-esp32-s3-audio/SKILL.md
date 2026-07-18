@@ -122,7 +122,12 @@ word. The ESP-mastered two-bus layout needs no patched component.
   `turn_on()`/`turn_off()`, which fires the trigger). If a switch's
   `on_turn_on`/`turn_on_action` touches audio components, guard it with an
   `init_in_progress`-style flag and apply the real state from `on_boot`
-  (priority -100).
+  (priority -100). **The same applies to a template `select` with
+  `restore_value: true`**: it replays the saved option during `setup()` and
+  fires `on_value` before the light/RMT and voice_assistant exist. An
+  `on_value` that repaints the ring (`control_leds`) then paints an effect on
+  an uninitialised strip and crash-loops the board into safe mode. Guard the
+  `on_value` with the same `init_in_progress` check.
 - **`channels:` on `voice_assistant`/`micro_wake_word` is NOT a channel count.**
   If you wrap the mic (`microphone: { microphone: id, channels: N }`) it is a
   `MicrophoneSource` and `channels` is a **list of channel indices**
