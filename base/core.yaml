@@ -66,6 +66,11 @@ substitutions:
   # https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
   posix_timezone: "UTC0"
 
+  # One-shot "ready" chime played once the device connects to HA. Ships with the
+  # repo (16 kHz mono, a few KB). Override with any URL or local file in your thin
+  # config; the media player decodes MP3/FLAC/WAV.
+  boot_sound_file: https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/raw/main/base/sounds/startup.mp3
+
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
@@ -378,6 +383,8 @@ media_player:
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/wake_word_triggered.flac
       - id: error_cloud_expired
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/error_cloud_expired.mp3
+      - id: boot_sound_custom
+        file: ${boot_sound_file}
 
 micro_wake_word:
   id: mww
@@ -472,7 +479,7 @@ voice_assistant:
           - script.execute:
               id: play_sound
               priority: true
-              sound_file: !lambda return id(wake_word_triggered_sound);
+              sound_file: !lambda return id(boot_sound_custom);
   on_client_disconnected:
     - voice_assistant.stop:
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};

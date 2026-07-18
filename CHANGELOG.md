@@ -22,7 +22,9 @@ STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
   no longer `disabled_by_default`).
 - **Boot chime**: a short "ready" sound plays once the device connects to HA,
   played after the mic (I2S master) is clocking so the slave speaker can output
-  it. New `boot_sound` switch toggles it.
+  it. New `boot_sound` switch toggles it. The sound ships with the repo
+  (`base/sounds/startup.mp3`, 16 kHz mono) and is swappable via the
+  `boot_sound_file` substitution (any URL or local MP3/FLAC/WAV).
 
 ### Added
 - **Per-phase ring animation, pickable from HA.** New "Listening effect",
