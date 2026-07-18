@@ -648,6 +648,63 @@ light:
           name: "Fireworks"
           spark_probability: 12%
           use_random_color: true
+      - addressable_random_twinkle:
+          name: "Random Twinkle"
+          twinkle_probability: 8%
+          progress_interval: 40ms
+      - addressable_rainbow:
+          name: "Rainbow Fast"
+          speed: 15
+          width: 7
+      # Custom effects. current_color is the phase colour set by control_leds,
+      # so these still read as the current assistant state.
+      - addressable_lambda:
+          name: "Comet"
+          update_interval: 70ms
+          lambda: |-
+            static int head = 0;
+            const int n = it.size();
+            for (int i = 0; i < n; i++) {
+              int d = (head - i + n) % n;                 // 0 at head, grows behind
+              float b = (d < 5) ? (1.0f / (1 << d)) : 0.0f;
+              it[i] = Color((uint8_t)(current_color.red   * b),
+                            (uint8_t)(current_color.green * b),
+                            (uint8_t)(current_color.blue  * b));
+            }
+            head = (head + 1) % n;
+      - addressable_lambda:
+          name: "Breathe"
+          update_interval: 32ms
+          lambda: |-
+            static uint16_t t = 0;
+            float b = (sinf(t * 3.14159265f / 128.0f) + 1.0f) * 0.5f;  // 0..1
+            b = 0.12f + b * 0.88f;                                     // floor 12%
+            it.all() = Color((uint8_t)(current_color.red   * b),
+                             (uint8_t)(current_color.green * b),
+                             (uint8_t)(current_color.blue  * b));
+            t = (t + 2) % 256;
+      - addressable_lambda:
+          name: "Spinner"
+          update_interval: 90ms
+          lambda: |-
+            static int pos = 0;
+            const int n = it.size();
+            it.all() = Color(0, 0, 0);
+            it[pos % n] = current_color;
+            it[(pos + 1) % n] = Color((uint8_t)(current_color.red   * 0.35f),
+                                      (uint8_t)(current_color.green * 0.35f),
+                                      (uint8_t)(current_color.blue  * 0.35f));
+            pos = (pos + 1) % n;
+      - addressable_lambda:
+          name: "Fire"
+          update_interval: 70ms
+          lambda: |-
+            const int n = it.size();
+            for (int i = 0; i < n; i++) {
+              uint8_t r = 160 + (esp_random() % 96);       // 160..255
+              uint8_t g = (uint8_t)(r * (0.20f + (esp_random() % 45) / 255.0f));
+              it[i] = Color(r, g, 0);
+            }
 
 globals:
   - id: mic_is_muted
@@ -1026,12 +1083,18 @@ select:
       - Pulse Slow
       - Pulse Medium
       - Pulse Fast
+      - Breathe
       - Wipe
-      - Rainbow Slow
       - Scan
+      - Spinner
+      - Comet
       - Twinkle
+      - Random Twinkle
       - Flicker
       - Fireworks
+      - Fire
+      - Rainbow Slow
+      - Rainbow Fast
     on_value:
       - script.execute: control_leds
   - platform: template

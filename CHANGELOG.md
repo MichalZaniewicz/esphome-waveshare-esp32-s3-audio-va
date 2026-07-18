@@ -27,8 +27,10 @@ STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
 ### Added
 - **Per-phase ring animation, pickable from HA.** New "Listening effect",
   "Thinking effect" and "Replying effect" selects choose the animation for those
-  voice-assistant phases (the phase colour stays fixed). New effects to choose
-  from: Scan, Twinkle, Flicker, Fireworks, alongside the pulses, wipe and rainbow.
+  voice-assistant phases (the phase colour stays fixed). 16 effects to choose
+  from: solid, three pulses, Breathe, Wipe, Scan, Spinner, Comet, Twinkle,
+  Random Twinkle, Flicker, Fireworks, Fire, and two rainbows. Breathe / Scan /
+  Spinner / Comet / Fire are custom `addressable_lambda` effects.
 
 ### Fixed
 - **The Pulse LED effects showed a solid colour instead of pulsing.** Their
