@@ -282,7 +282,12 @@ microphone:
     i2s_din_pin: ${i2s_din}
     adc_type: external
     pdm: false
-    # default i2s_mode: primary -> this bus masters the shared clock
+    # default i2s_mode: primary -> this bus masters the shared clock.
+    # 16-bit on purpose: as master the mic defines the frame's slot width, and
+    # the i2s_audio default is 32-bit. The ES8311/speaker are 16-bit, so a
+    # 32-bit frame doubles the bit clock they expect and playback comes out as
+    # noise. Matching 16-bit aligns the whole bus (the ES7210 is 16-bit too).
+    bits_per_sample: 16bit
 
 speaker:
   - platform: i2s_audio
