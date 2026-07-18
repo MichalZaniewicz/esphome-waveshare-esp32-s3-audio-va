@@ -124,6 +124,13 @@ esphome:
                   id: play_sound
                   priority: true
                   sound_file: !lambda return id(wake_word_triggered_sound);
+              # Clear the announcing state afterwards. A standalone boot
+              # announcement can leave media_player.is_announcing stuck true,
+              # and then on_wake_word_detected only ever stops that phantom
+              # announcement instead of starting Assist.
+              - delay: 1500ms
+              - media_player.stop:
+                  announcement: true
 
 esp32:
   board: esp32-s3-devkitc-1
