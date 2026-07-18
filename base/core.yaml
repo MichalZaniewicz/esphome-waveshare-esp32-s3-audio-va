@@ -385,10 +385,6 @@ media_player:
           - delay: 100ms
           - script.execute: control_leds_volume_changed
     files:
-      - id: mute_switch_on_sound
-        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/mute_switch_on.flac
-      - id: mute_switch_off_sound
-        file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/mute_switch_off.flac
       - id: timer_finished_sound
         file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
       - id: wake_word_triggered_sound
@@ -1080,14 +1076,6 @@ switch:
       - lambda: id(mic_is_muted) = false;
       - microphone.unmute: i2s_mics
       - script.execute: flash_ring
-
-  - platform: template
-    id: mute_sound
-    name: Mute and unmute sound
-    icon: "mdi:bullhorn"
-    entity_category: config
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
 
   - platform: template
     id: wake_sound
