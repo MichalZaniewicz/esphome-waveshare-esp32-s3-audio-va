@@ -109,6 +109,21 @@ esphome:
               - microphone.stop_capture: i2s_mics
             else:
               - logger.log: "Mic enabled"
+        # The amp (PA_EN) is enabled from boot, but the I2S speaker driver only
+        # starts on the first playback - until then the amp amplifies an
+        # undriven DAC line as a faint hiss. Play a short sound a couple of
+        # seconds in to initialise the speaker into clean silence (it then stays
+        # alive via timeout: never). Doubles as a "ready" chime; toggle with the
+        # boot_sound switch.
+        - delay: 2s
+        - if:
+            condition:
+              switch.is_on: boot_sound
+            then:
+              - script.execute:
+                  id: play_sound
+                  priority: true
+                  sound_file: !lambda return id(wake_word_triggered_sound);
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -1082,6 +1097,14 @@ switch:
     entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: boot_sound
+    name: Boot sound
+    icon: "mdi:bullhorn"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON   # also silences the boot hiss; off = hiss returns
 
   - platform: template
     id: timer_ringing
