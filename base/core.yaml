@@ -406,9 +406,12 @@ micro_wake_word:
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/okay_nabu.json
       id: okay_nabu
     # "stop" interrupts a long TTS reply; enabled only while one is playing.
+    # Lower cutoff (default 0.5) so it triggers over the device's own TTS in the
+    # mic (no hardware AEC on this board). Raise it if the TTS false-triggers it.
     - model: https://github.com/OHF-Voice/micro-wake-word/releases/download/stop-20241016.2/stop.json
       id: stop
       internal: true
+      probability_cutoff: 0.4
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
@@ -920,6 +923,7 @@ script:
             switch.is_off: timer_ringing
           then:
             - micro_wake_word.enable_model: stop
+            - logger.log: "stop word ARMED (reply playing)"
             - wait_until:
                 not:
                   media_player.is_announcing:
@@ -928,6 +932,7 @@ script:
                   switch.is_off: timer_ringing
                 then:
                   - micro_wake_word.disable_model: stop
+                  - logger.log: "stop word disarmed"
 
   - id: check_alarm
     then:
@@ -1028,6 +1033,7 @@ select:
     name: "Alarm action"
     id: alarm_action
     icon: mdi:bell-plus
+    internal: true              # daily-alarm feature, hidden from HA
     options:
       - "Play sound"
       - "Send event"
@@ -1165,6 +1171,7 @@ switch:
     id: alarm_on
     icon: mdi:bell-badge
     name: "Alarm on"
+    internal: true              # daily-alarm feature, hidden from HA
     on_turn_on:
       - script.execute: control_leds
     on_turn_off:
@@ -1230,6 +1237,7 @@ text_sensor:
     name: "Alarm time"
     id: alarm_time
     icon: mdi:bell-ring
+    internal: true              # daily-alarm feature, hidden from HA
   # Published for the alarm/clock logic, but not shown in HA (it's just the
   # device's own clock, which HA already has).
   - platform: template
