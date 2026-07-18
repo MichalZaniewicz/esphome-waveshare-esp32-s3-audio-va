@@ -19,7 +19,9 @@ core you pull as a package, plus one thin config file you actually edit.
   fighting it. Both are exposed to Music Assistant.
 - **LED ring**: one state machine drives it. Boot, no-Wi-Fi, no-HA, listening,
   thinking, replying, timer counting, ringing, volume changed - each a distinct
-  colour/effect, with brightness adjustable from HA.
+  colour/effect. Brightness and the animation for the listening / thinking /
+  replying phases are pickable from HA (solid, pulses, wipe, rainbow, scan,
+  twinkle, flicker, fireworks).
 - **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
   in HA. (A daily-alarm engine is present but its entities are hidden by default.)
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
@@ -92,8 +94,9 @@ skill/
 ## Configuration
 
 Everything worth changing day to day is a Home Assistant entity, not a config
-edit: mic gain, LED brightness, wake-word sensitivity, wake sound, boot sound,
-microphone mute.
+edit: mic gain, LED brightness, the ring animation per assistant phase
+(Listening / Thinking / Replying effect), wake-word sensitivity, wake sound,
+boot sound, microphone mute.
 
 What lives in `waveshare-va.yaml`:
 

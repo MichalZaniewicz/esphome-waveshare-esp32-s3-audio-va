@@ -631,6 +631,23 @@ light:
           width: 7
       - addressable_color_wipe:
           name: "Wipe"
+      # Scan / Twinkle / Flicker use the phase colour set by control_leds, so
+      # they still read as "listening/thinking/replying" while looking different.
+      - addressable_scan:
+          name: "Scan"
+          move_interval: 120ms
+          scan_width: 2
+      - addressable_twinkle:
+          name: "Twinkle"
+          twinkle_probability: 8%
+          progress_interval: 40ms
+      - addressable_flicker:
+          name: "Flicker"
+          intensity: 12%
+      - addressable_fireworks:
+          name: "Fireworks"
+          spark_probability: 12%
+          use_random_color: true
 
 globals:
   - id: mic_is_muted
@@ -757,7 +774,7 @@ script:
                    (int)wifi_connected, (int)api_connected, (int)improv_ble, (int)init_progress,
                    (int)ringing, (int)timers_active, phase);
 
-          auto set = [&](const char* effect, float r, float g, float b) {
+          auto set = [&](const std::string &effect, float r, float g, float b) {
             id(led_set_effect).execute(effect, r, g, b);
           };
 
@@ -784,13 +801,13 @@ script:
               set("solid", 0.5, 0.0, 0.5);           // calm violet: I'm awake
               return;
             case ${voice_assist_listening_for_command_phase_id}:
-              set("Pulse Medium", 0.8, 0.0, 0.8);
+              set(id(listening_effect).current_option(), 0.8, 0.0, 0.8);
               return;
             case ${voice_assist_thinking_phase_id}:
-              set("Pulse Slow", 0.6, 0.0, 0.6);
+              set(id(thinking_effect).current_option(), 0.6, 0.0, 0.6);
               return;
             case ${voice_assist_replying_phase_id}:
-              set("Wipe", 0.6, 0.0, 0.6);
+              set(id(replying_effect).current_option(), 0.6, 0.0, 0.6);
               return;
             case ${voice_assist_error_phase_id}:
               set("Pulse Fast", 1.0, 0.0, 0.0);
@@ -992,6 +1009,54 @@ select:
             id(alexa).set_probability_cutoff(128);        // 0.50
             id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH
           }
+
+  # Pick the ring animation for each voice-assistant phase, from HA, live.
+  # The option strings must match effect names in the light's `effects:` block
+  # (plus "solid"). control_leds reads these; the phase colour stays fixed.
+  - platform: template
+    name: "Listening effect"
+    id: listening_effect
+    icon: mdi:led-strip-variant
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: "Pulse Medium"
+    options: &va_ring_effects
+      - solid
+      - Pulse Slow
+      - Pulse Medium
+      - Pulse Fast
+      - Wipe
+      - Rainbow Slow
+      - Scan
+      - Twinkle
+      - Flicker
+      - Fireworks
+    on_value:
+      - script.execute: control_leds
+  - platform: template
+    name: "Thinking effect"
+    id: thinking_effect
+    icon: mdi:led-strip-variant
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: "Pulse Slow"
+    options: *va_ring_effects
+    on_value:
+      - script.execute: control_leds
+  - platform: template
+    name: "Replying effect"
+    id: replying_effect
+    icon: mdi:led-strip-variant
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: "Wipe"
+    options: *va_ring_effects
+    on_value:
+      - script.execute: control_leds
+
   - platform: logger
     id: logger_select
     name: Logger Level

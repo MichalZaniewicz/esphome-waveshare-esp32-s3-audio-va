@@ -24,6 +24,12 @@ STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
   played after the mic (I2S master) is clocking so the slave speaker can output
   it. New `boot_sound` switch toggles it.
 
+### Added
+- **Per-phase ring animation, pickable from HA.** New "Listening effect",
+  "Thinking effect" and "Replying effect" selects choose the animation for those
+  voice-assistant phases (the phase colour stays fixed). New effects to choose
+  from: Scan, Twinkle, Flicker, Fireworks, alongside the pulses, wipe and rainbow.
+
 ### Fixed
 - **The Pulse LED effects showed a solid colour instead of pulsing.** Their
   `update_interval` (16 ms) was shorter than the transition (300-1000 ms);
