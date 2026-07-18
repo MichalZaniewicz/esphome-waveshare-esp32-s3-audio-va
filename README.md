@@ -120,7 +120,7 @@ What lives in `waveshare-va.yaml`:
 
 | Substitution | Default | What it does |
 |---|---|---|
-| `name` / `friendly_name` | `waveshare-va` | Device name. Changing it re-creates every entity in HA. |
+| `name` / `friendly_name` | `waveshare-va` / `Waveshare Voice` | Device name. Changing `name` re-creates every entity in HA. |
 | `posix_timezone` | `CET-1CEST,...` | Clock zone in POSIX form (the device has no IANA database). DST automatic. |
 | `volume_min` / `volume_max` | `0.4` / `0.8` | Media player clamps, because the onboard amp distorts near the top. |
 | `hidden_ssid` | `false` | `true` enables `fast_connect` for a hidden SSID. |

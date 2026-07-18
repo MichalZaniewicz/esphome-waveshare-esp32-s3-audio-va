@@ -33,6 +33,11 @@ substitutions:
   # Set to 'true' only if your SSID is hidden.
   hidden_ssid: 'false'
 
+  # Boot chime played once on connect to Home Assistant. A sound ships with the
+  # firmware; uncomment to use your own (any URL or local MP3/FLAC/WAV). The
+  # board plays back at 16 kHz mono, so a small 16 kHz mono file is plenty.
+  # boot_sound_file: https://example.com/my-chime.mp3
+
   # Mic gain, LED brightness, wake-word sensitivity and the alarm are all
   # exposed as entities in Home Assistant - no need to reflash to change them.
 
