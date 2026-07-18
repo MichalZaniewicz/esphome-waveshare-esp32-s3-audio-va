@@ -616,18 +616,28 @@ light:
     rgb_order: RGB
     default_transition_length: 150ms
     effects:
+      # update_interval must be LONGER than transition_length: it is how often
+      # the pulse flips its brightness target (min<->max), not a frame rate. A
+      # 16ms interval flips faster than the transition can move, so the ring just
+      # sits at one brightness (looks solid). ~2x the transition pulses cleanly.
       - pulse:
           name: "Pulse Slow"
-          transition_length: 1000ms
-          update_interval: 16ms
+          min_brightness: 30%
+          max_brightness: 100%
+          transition_length: 2000ms
+          update_interval: 3000ms
       - pulse:
           name: "Pulse Medium"
+          min_brightness: 30%
+          max_brightness: 100%
           transition_length: 600ms
-          update_interval: 16ms
+          update_interval: 1200ms
       - pulse:
           name: "Pulse Fast"
+          min_brightness: 30%
+          max_brightness: 100%
           transition_length: 300ms
-          update_interval: 16ms
+          update_interval: 600ms
       - addressable_rainbow:
           name: "Rainbow Slow"
           speed: 6
