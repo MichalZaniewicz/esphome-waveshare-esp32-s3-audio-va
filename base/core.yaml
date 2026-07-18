@@ -405,13 +405,6 @@ micro_wake_word:
       id: alexa
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/okay_nabu.json
       id: okay_nabu
-    # "stop" interrupts a long TTS reply; enabled only while one is playing.
-    # Lower cutoff (default 0.5) so it triggers over the device's own TTS in the
-    # mic (no hardware AEC on this board). Raise it if the TTS false-triggers it.
-    - model: https://github.com/OHF-Voice/micro-wake-word/releases/download/stop-20241016.2/stop.json
-      id: stop
-      internal: true
-      probability_cutoff: 0.4
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
@@ -543,7 +536,6 @@ voice_assistant:
         then:
           - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
           - script.execute: control_leds
-          - script.execute: activate_stop_word_once
   on_tts_start:
     - if:
         condition:
@@ -551,7 +543,6 @@ voice_assistant:
         then:
           - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
           - script.execute: control_leds
-          - script.execute: activate_stop_word_once
   on_tts_end:
     - script.execute:
         id: send_tts_uri_event
@@ -913,34 +904,6 @@ script:
           }
           id(is_timer_active) = output;
 
-  # Enable the "stop" wake word only around a long TTS reply.
-  - id: activate_stop_word_once
-    mode: restart          # on_intent_progress and on_tts_start may both call it
-    then:
-      - if:
-          condition:
-            switch.is_off: timer_ringing
-          then:
-            # Wait for the reply to actually START playing before arming. This
-            # trigger fires a moment BEFORE the announcement begins, so checking
-            # "not announcing" first would pass instantly and disarm in the same
-            # tick (the bug that made stop never work).
-            - wait_until:
-                condition:
-                  media_player.is_announcing:
-                timeout: 3s
-            - micro_wake_word.enable_model: stop
-            - logger.log: "stop word ARMED (reply playing)"
-            - wait_until:
-                not:
-                  media_player.is_announcing:
-            - if:
-                condition:
-                  switch.is_off: timer_ringing
-                then:
-                  - micro_wake_word.disable_model: stop
-                  - logger.log: "stop word disarmed"
-
   - id: check_alarm
     then:
       - lambda: |-
@@ -1152,13 +1115,11 @@ switch:
           id: media_mixing_input
           decibel_reduction: 20
           duration: 0.0s
-      - micro_wake_word.enable_model: stop
       - script.execute: ring_timer
       - script.execute: control_leds
       - delay: 15min           # give up if nobody stops it
       - switch.turn_off: timer_ringing
     on_turn_off:
-      - micro_wake_word.disable_model: stop
       - script.execute: disable_repeat
       - if:
           condition:
