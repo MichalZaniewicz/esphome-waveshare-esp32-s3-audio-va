@@ -102,9 +102,9 @@ speaker:
     i2s_mode: secondary           # slave to the mic's clock
 ```
 
-Historical note: earlier versions used sw3Dan's patched `es8311` with
-`force_master` (codec masters the clock). It works, but the ESP-mastered two-bus
-layout does the same on stock ESPHome, so the patch was removed.
+Do **not** make the ES8311 the master via a `force_master`-style patch: a
+codec-mastered clock feeds the ESP mic a wrong-rate stream and kills the wake
+word. The ESP-mastered two-bus layout needs no patched component.
 
 ## Gotchas that cost real time
 

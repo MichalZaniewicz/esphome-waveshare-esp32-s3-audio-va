@@ -72,12 +72,8 @@ The layout that works, all on **stock ESPHome components**:
   mic is master it sets the frame's slot width, and a 32-bit frame against the
   16-bit DAC comes out as noise.
 
-This gives simultaneous capture + playback with no patched component. Earlier
-versions of this repo vendored [sw3Dan](https://github.com/sw3Dan)'s patched
-`es8311` (`force_master`), which was the original way to make this board work;
-it turned out the ESP-mastered two-bus layout does the same job with stock
-ESPHome, so the patch was dropped. The details live in the audio section of
-`base/core.yaml`.
+This gives simultaneous capture + playback with no custom component. The
+annotated config is in the audio section of `base/core.yaml`.
 
 ## Repository layout
 
@@ -126,11 +122,8 @@ cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 
 ## Credits
 
-- **[sw3Dan](https://github.com/sw3Dan)**: the original board config this started
-  from, and the `es8311` `force_master` approach that first made it work.
 - **[jensenbox](https://github.com/jensenbox/waveshare-esp32-s3-audio)**: the
-  single-ESP-master I2S layout for this board that this repo's stock-component
-  audio setup is based on.
+  ESP-master I2S layout for this board that the audio setup is based on.
 - **ESPHome**: everything the firmware is built out of.
 - **[Home Assistant Voice PE](https://github.com/esphome/home-assistant-voice-pe)**:
   the sounds, and the phase/ducking model the LED state machine follows.

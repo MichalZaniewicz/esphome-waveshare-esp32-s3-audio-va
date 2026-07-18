@@ -11,7 +11,7 @@ assumption.
 | **A** | [Schematic PDF v1.1](https://files.waveshare.com/wiki/ESP32-S3-AUDIO-Board/ESP32-S3-AUDIO-Board_1.1.pdf), ground truth for wiring. Text-extracted, so net/pin association is occasionally ambiguous. |
 | **A** | [Official demo ZIP](https://files.waveshare.com/wiki/ESP32-S3-AUDIO-Board/ESP32-S3-AUDIO-Board-Demo.zip), Arduino + ESP-IDF. Ground truth for what firmware actually drives, **but it contains proven stale copy-paste from other boards.** |
 | **B** | [Waveshare wiki](https://www.waveshare.com/wiki/ESP32-S3-AUDIO-Board), pinout tables. (Returns HTTP 403 to some fetchers; a browser User-Agent gets through.) |
-| **B** | [sw3Dan's ESPHome config](https://github.com/sw3Dan/waveshare-s2-audio_esphome_voice), empirically working, so behavioural confirmation. |
+| **B** | An empirically-working community ESPHome config for this board, used as behavioural confirmation. |
 
 ## Board identity
 
@@ -96,14 +96,14 @@ internal pull.
 
 ### "The keys are on 12, not 9/10/11": settled, they are on 9/10/11
 
-sw3Dan's config carries `number: 9 # not '12' as schematics say!`. The map
+A working community config carries `number: 9 # not '12' as schematics say!`. The map
 **9/10/11 (keys) + 8 (PA_EN) is right**, confirmed twice over:
 
 - Waveshare's **own driver code** reads exactly those:
   `Button_Driver.cpp` calls `Read_EXIO(TCA9555_EXIO9/10/11)` with
   `#define BUTTON_ACTIVE_LEVEL 0`, and `Audio_ES8311.cpp` has `Audio_PA_EN()`
   setting `TCA9555_EXIO8` true.
-- sw3Dan arrived at the same map empirically, independently.
+- A working community config arrived at the same map empirically, independently.
 
 Whether the *schematic* really implies 12 could not be confirmed (PDF text
 extraction loses the geometry, and `Key4`/`Key5` nets also appear near
@@ -128,7 +128,7 @@ alone keeps USB flashing alive.
 | RGB order | **RGB** |
 
 > On RGB vs GRB: two sources say RGB (the official demo's
-> `LED_STRIP_COLOR_COMPONENT_FMT_RGB`, and sw3Dan's working config). But
+> `LED_STRIP_COLOR_COMPONENT_FMT_RGB`, and a working community config). But
 > WS2812B is *conventionally* GRB, and Waveshare's own line contradicts its own
 > trailing comment (`..._FMT_RGB, // The color order of the strip: GRB`).
 > **Verify visually**: set pure red and check it isn't green.
@@ -173,7 +173,7 @@ Kept for reference. This build is speaker + mics + ring + buttons only.
 - **USB**: D- GPIO19, D+ GPIO20. **UART0**: TX GPIO43, RX GPIO44.
 - **RTC PCF85063ATL** @ 0x51 + 32.768 kHz crystal + backup battery header.
   The `RTC_INT` net exists but **where it terminates is unconfirmed**.
-  sw3Dan's `rtc_int: 5` collides with CAM_PWDN and is unused in their own config.
+  an `rtc_int: 5` seen in a community config collides with CAM_PWDN and is unused there.
 
 ### ⚠️ Battery ADC: conflicting sources, don't trust GPIO8
 
@@ -208,11 +208,10 @@ The layout this firmware uses, all on stock ESPHome components:
 - The mic is pinned to **16-bit**: as master it sets the frame slot width, and
   the i2s_audio default is 32-bit, which against the 16-bit DAC produces noise.
 
-The board's original ESPHome config (sw3Dan) instead made the **ES8311** the
-master via a patched component (`force_master`, setting the codec's MSC bit).
-That works, but it fed the ESP mic a wrong-rate stream that killed the wake word;
-the ESP-mastered two-bus layout above avoids the patch entirely. See
-`base/core.yaml` for the annotated config.
+Making the **ES8311** the master instead (a `force_master`-style patch, setting
+the codec's MSC bit) also works, but it feeds the ESP mic a wrong-rate stream
+that kills the wake word. The ESP-mastered two-bus layout above needs no patch.
+See `base/core.yaml` for the annotated config.
 
 ### ⚠️ Cold-boot failure of the ES7210 / LEDs: no verified fix
 
@@ -248,7 +247,7 @@ What that mechanism does **not** account for:
 **What this firmware does** (a mechanism-based mitigation, not a proven fix):
 ESPHome's `tca9555` writes the direction registers itself, and the `amp_enable`
 GPIO switch with `restore_mode: RESTORE_DEFAULT_ON` drives PA_EN at boot. This
-matches sw3Dan's config, which is reported working.
+matches a community config that is reported working.
 
 ### Amp idle hiss / turn-on pop
 
