@@ -156,9 +156,6 @@ wifi:
 logger:
   level: DEBUG
 
-debug:
-  update_interval: 5s
-
 api:
   id: api_id
   # No encryption: this is a LAN-only device on a trusted network, same as the
@@ -167,16 +164,6 @@ api:
   #     key: !secret api_encryption_key
   # and put the base64 key in your dashboard's secrets.
   actions:
-    - action: set_led_color
-      variables:
-        red: float
-        green: float
-        blue: float
-      then:
-        - lambda: |-
-            id(led_ring_color_r) = std::min(1.0f, std::max(0.0f, red));
-            id(led_ring_color_g) = std::min(1.0f, std::max(0.0f, green));
-            id(led_ring_color_b) = std::min(1.0f, std::max(0.0f, blue));
     - action: start_va
       then:
         - voice_assistant.start
@@ -650,17 +637,19 @@ globals:
     type: bool
     restore_value: no          # the switch forces OFF at boot (see on_client_connected)
     initial_value: 'false'
+  # Transient pass-through for the current ring colour (set by led_set_effect
+  # from its params right before use), so no need to persist across reboots.
   - id: led_ring_color_r
     type: float
-    restore_value: yes
+    restore_value: no
     initial_value: '1.0'
   - id: led_ring_color_g
     type: float
-    restore_value: yes
+    restore_value: no
     initial_value: '0.0'
   - id: led_ring_color_b
     type: float
-    restore_value: yes
+    restore_value: no
     initial_value: '1.0'
   - id: init_in_progress
     type: bool
@@ -700,9 +689,11 @@ globals:
 script:
   - id: flash_ring
     then:
-      - light.turn_on: { id: status_ring, red: 1.0, green: 0.0, blue: 0.0, brightness: 100% }
+      - light.turn_on: { id: status_ring, red: 1.0, green: 0.0, blue: 0.0, brightness: 100%, effect: "None" }
       - delay: 250ms
-      - light.turn_off: status_ring
+      # Return to the real state instead of going dark (e.g. if a timer is
+      # counting or the VA is active while the mic is muted/unmuted).
+      - script.execute: control_leds
 
   # Minimal LED dispatcher: off / solid / a named built-in effect.
   - id: led_set_effect
@@ -731,6 +722,7 @@ script:
                 then:
                   - light.turn_on:
                       id: status_ring
+                      effect: "None"    # clear any running effect so solid is steady
                       brightness: !lambda 'return id(led_ring_brightness).state;'
                       red: !lambda 'return id(led_ring_color_r);'
                       green: !lambda 'return id(led_ring_color_g);'
@@ -1067,7 +1059,8 @@ switch:
     id: mic_mute_switch
     name: "Microphone Mute"
     icon: mdi:microphone-off
-    restore_mode: RESTORE_DEFAULT_OFF
+    # State comes from the lambda below, so restore_mode would be a no-op here.
+    # The mute is forced off at boot by the voice_assistant on_client_connected.
     lambda: |-
       return id(mic_is_muted);
     # A real mute, via ESPHome's own primitive: microphone.mute makes the

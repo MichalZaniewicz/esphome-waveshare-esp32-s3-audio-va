@@ -153,9 +153,10 @@ have actual capsules.
 
 **Hardware AEC is not usable from stock ESPHome on this board.** The demo packs
 4x16-bit channels into 2x32-bit I2S slots and unpacks them in software; ESPHome
-does not. This firmware therefore takes the two real mics as a plain stereo
-stream (`channel: left` gives one capsule) and relies on ESPHome's software
-`noise_suppression_level` / `auto_gain` instead.
+does not. This firmware takes a single mic channel and relies on ESPHome's
+software `noise_suppression_level` / `auto_gain` instead. The practical fallout:
+without AEC the mic hears the device's own speaker loudly, so barge-in features
+(a "stop" wake word during a reply) don't work here.
 
 ## Not used by this firmware
 

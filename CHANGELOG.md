@@ -16,8 +16,33 @@ STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
 - **The amplifier is gated on playback** (`ALWAYS_OFF` at boot, turned on by the
   media_player `on_state`) to remove the idle hiss the always-on amp produced
   before the first playback.
+- **API encryption dropped** (LAN-only device); `secrets.yaml` is now just Wi-Fi.
+  Re-enable it via the commented block in `base/core.yaml` if you want it.
+- **Timers are visible in HA** (the "Next timer" / "Next timer name" sensors are
+  no longer `disabled_by_default`).
+- **Boot chime**: a short "ready" sound plays once the device connects to HA,
+  played after the mic (I2S master) is clocking so the slave speaker can output
+  it. New `boot_sound` switch toggles it.
+
+### Fixed
+- **The Pulse LED effects showed a solid colour instead of pulsing.** Their
+  `update_interval` (16 ms) was shorter than the transition (300-1000 ms);
+  `update_interval` is how often the pulse flips its brightness target, so it
+  flipped faster than the brightness could move. Now ~2x the transition, with
+  30-100% min/max brightness.
+- Compile-time issues found during bring-up: a quoted `mclk_multiple`
+  substitution (string vs the int a `cv.one_of` wants), a `template select`
+  missing its `options:`, `select` `.state` -> `current_option()`, the dead
+  microWakeWord model URLs (404), and a `/` in a switch name.
 
 ### Removed
+- **The `stop` wake word.** This board has no usable hardware AEC, so the mic
+  hears the device's own TTS far louder than the user; "stop" is detected only
+  weakly and too late to be useful.
+- **The daily-alarm entities** (Alarm time / Alarm on / Alarm action), the
+  device-clock text sensor, and the diagnostic mic-disable switch are now
+  `internal:` (hidden from HA). The logic stays; the clutter is gone.
+- The dead "Mute and unmute sound" switch and its unused sound files.
 - `components/es8311/` and the `external_components:` block - no longer needed.
 
 ## [0.1.0] - 2026-07-17
@@ -83,8 +108,3 @@ Bugs carried over from the config this started as:
 - Dropped dead substitutions (`i2s_bits_per_sample`, `i2s_mode_speaker`,
   `rtc_int`, `mic_channel_2`) and the now-unused `mic_gain_saved` global.
 - Timezone is a `posix_timezone` substitution rather than a hard-coded `UTC0`.
-
-### Known / untested
-- The mute and diagnostics switch rework is **not yet verified on hardware**.
-- Cold-boot reliability of the ES7210 + TCA9555 is a reported issue on this
-  board, see `docs/HARDWARE.md`.

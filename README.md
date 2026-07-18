@@ -6,9 +6,8 @@ the little AI smart-speaker devkit with a dual-mic array, an ES8311 codec, three
 buttons and a 7-LED RGB ring. Pure ESPHome, no custom C firmware: an always-on
 core you pull as a package, plus one thin config file you actually edit.
 
-> **Status: early.** The firmware is a working config cleaned up and
-> restructured, not a polished release. See [CHANGELOG.md](CHANGELOG.md) for
-> what is fixed and what is still untested on hardware.
+> **Status: working on hardware.** Wake word, STT/TTS, clean playback and the LED
+> ring are confirmed on-device. See [CHANGELOG.md](CHANGELOG.md) for the history.
 
 ## What it does
 
@@ -18,17 +17,16 @@ core you pull as a package, plus one thin config file you actually edit.
 - **Simultaneous music and announcements**: a mixer speaker blends the media and
   announcement pipelines, so a doorbell announcement ducks the music instead of
   fighting it. Both are exposed to Music Assistant.
-- **Say "stop"**: a `stop` wake word is armed only while a long TTS reply is
-  playing, so you can cut the assistant off mid-sentence.
 - **LED ring**: one state machine drives it. Boot, no-Wi-Fi, no-HA, listening,
-  thinking, replying, timer ticking, alarm ringing, volume changed. Colour is
-  settable from HA via the `set_led_color` action.
-- **Timers and an alarm clock**: voice timers with an on-ring countdown, plus a
-  daily alarm that can play a sound, fire an HA event, or both.
+  thinking, replying, timer counting, ringing, volume changed - each a distinct
+  colour/effect, with brightness adjustable from HA.
+- **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
+  in HA. (A daily-alarm engine is present but its entities are hidden by default.)
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
-- **Diagnostics**: a real microphone mute, a "disable mic" switch, live ES7210
-  gain, LED brightness and wake-word sensitivity, all as HA entities. No
-  reflashing to tune the thing.
+- **Boot chime**: a short "ready" sound once the device connects to HA
+  (toggleable, and it also settles the amp so the ring boots silent).
+- **Tunable live from HA**: microphone mute, ES7210 mic gain, LED brightness and
+  wake-word sensitivity are all entities, so there's no reflashing to tune it.
 
 ## Quick start
 
@@ -94,8 +92,8 @@ skill/
 ## Configuration
 
 Everything worth changing day to day is a Home Assistant entity, not a config
-edit: mic gain, LED brightness, wake-word sensitivity, wake sound, alarm time
-and action, mute.
+edit: mic gain, LED brightness, wake-word sensitivity, wake sound, boot sound,
+microphone mute.
 
 What lives in `waveshare-va.yaml`:
 

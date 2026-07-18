@@ -124,15 +124,18 @@ word. The ESP-mastered two-bus layout needs no patched component.
   `init_in_progress`-style flag and apply the real state from `on_boot`
   (priority -100).
 - **`channels:` on `voice_assistant`/`micro_wake_word` is NOT a channel count.**
-  It is a `MicrophoneSource`, and `channels` is a **list of channel indices**
-  (`cv.ensure_list(cv.int_range(0, 7))`, default `0`). With `channel: left` on
-  the mic you have a 1-channel stream, so `0` is the only valid index. Assist
-  does not accept a stereo source.
+  If you wrap the mic (`microphone: { microphone: id, channels: N }`) it is a
+  `MicrophoneSource` and `channels` is a **list of channel indices**
+  (`cv.ensure_list(cv.int_range(0, 7))`, default `0`), not a count. This firmware
+  just passes the mic directly (`microphone: i2s_mics`) and lets it default, so
+  the wrapper isn't used - simplest, and Assist won't take a stereo source anyway.
 - **Hardware AEC is not reachable from stock ESPHome here.** The demo packs
   4x16-bit ADC channels into 2x32-bit I2S slots and unpacks in software; ESPHome
-  doesn't. Use `noise_suppression_level` / `auto_gain` instead. (And the demo's
-  declared slot order `"RMNM"` doesn't reconcile with the schematic's wiring,
-  which is unresolved.)
+  doesn't. Use `noise_suppression_level` / `auto_gain` instead. Practical fallout:
+  the mic hears the device's own speaker loudly, so a "stop" wake word to
+  interrupt a reply does not work on this board (detected too weakly and late).
+  (The demo's declared slot order `"RMNM"` also doesn't reconcile with the
+  schematic wiring - unresolved.)
 - **Cold-boot: mic + LEDs sometimes don't come up until a reset.** Reported on
   the HA forum in **a single post with zero replies, with no published root cause
   or fix.** The TCA9555 direction registers defaulting to `0xFF` (all inputs)
