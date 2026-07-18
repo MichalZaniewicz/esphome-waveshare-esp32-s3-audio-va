@@ -345,19 +345,29 @@ media_player:
           decibel_reduction: 20
           duration: 0.0s
     on_state:
-      if:
-        condition:
-          and:
-            - switch.is_off: timer_ringing
-            - not:
-                voice_assistant.is_running:
-            - not:
-                media_player.is_announcing:
-        then:
-          - mixer_speaker.apply_ducking:
-              id: media_mixing_input
-              decibel_reduction: 0
-              duration: 1.0s
+      # Amp follows playback: turn it on the instant audio starts. It stays on
+      # afterwards (the speaker then holds the line at clean silence), so there
+      # is no per-sound clicking - only the boot window is silent.
+      - if:
+          condition:
+            or:
+              - media_player.is_announcing:
+              - lambda: 'return id(external_media_player)->state == media_player::MediaPlayerState::MEDIA_PLAYER_STATE_PLAYING;'
+          then:
+            - switch.turn_on: amp_enable
+      - if:
+          condition:
+            and:
+              - switch.is_off: timer_ringing
+              - not:
+                  voice_assistant.is_running:
+              - not:
+                  media_player.is_announcing:
+          then:
+            - mixer_speaker.apply_ducking:
+                id: media_mixing_input
+                decibel_reduction: 0
+                duration: 1.0s
     on_mute:
       - delay: 100ms            # debounce
       - script.execute: control_leds_volume_changed
@@ -1041,7 +1051,11 @@ switch:
       tca9555: ioexp
       number: ${amp_ctrl}
       inverted: false
-    restore_mode: RESTORE_DEFAULT_ON
+    # OFF at boot so the amp doesn't amplify the undriven DAC line as a hiss
+    # before the speaker's first playback. The media_player on_state turns it on
+    # the moment audio starts and leaves it on (the speaker then holds the line
+    # at silence, which is clean).
+    restore_mode: ALWAYS_OFF
 
   - platform: template
     id: mic_mute_switch
