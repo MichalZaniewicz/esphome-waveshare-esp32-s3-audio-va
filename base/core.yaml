@@ -1081,7 +1081,7 @@ select:
     entity_category: config
     optimistic: true
     restore_value: true
-    initial_option: "Pulse Medium"
+    initial_option: "Comet"
     options: &va_ring_effects
       - solid
       - Pulse Slow
@@ -1115,7 +1115,7 @@ select:
     entity_category: config
     optimistic: true
     restore_value: true
-    initial_option: "Pulse Slow"
+    initial_option: "Pulse Fast"
     options: *va_ring_effects
     on_value: *repaint_if_ready
   - platform: template
