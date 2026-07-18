@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.0] - 2026-07-18
+
+First on-hardware bring-up. The full voice assistant works: on-device wake word,
+STT/intent/TTS, clean playback, no boot hiss - all on stock ESPHome components.
+
+### Changed
+- **Audio reworked to two I2S buses with the mic as master; the patched es8311
+  and `force_master` are gone.** The board shares BCLK/LRCLK between the DAC and
+  ADC, and ESPHome can't run one bus full-duplex (the speaker hits "Parent bus
+  is busy"). Two buses over the shared pins, with the always-capturing mic
+  mastering the clock and the speaker slaving to it, gives simultaneous capture
+  and playback on stock components. The mic is pinned to 16-bit so its master
+  frame matches the DAC (a 32-bit frame played back as noise).
+- **The amplifier is gated on playback** (`ALWAYS_OFF` at boot, turned on by the
+  media_player `on_state`) to remove the idle hiss the always-on amp produced
+  before the first playback.
+
+### Removed
+- `components/es8311/` and the `external_components:` block - no longer needed.
+
 ## [0.1.0] - 2026-07-17
 
 First cut. A working single-file config for the Waveshare ESP32-S3-AUDIO-Board,

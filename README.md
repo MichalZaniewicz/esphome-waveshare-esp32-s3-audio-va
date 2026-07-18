@@ -39,8 +39,8 @@ core you pull as a package, plus one thin config file you actually edit.
    if you want it (see the commented block there).
 2. Copy **`waveshare-va.yaml`** next to it and edit the `substitutions:` at the
    top (device name, timezone, volume limits). That thin file is the only
-   firmware file you keep. The core and the patched component are **pulled from
-   GitHub at compile time**, see its `packages:` block.
+   firmware file you keep. The core is **pulled from GitHub at compile time**,
+   see its `packages:` block.
 3. **First flash over USB**, then updates go wireless:
    ```
    esphome run waveshare-va.yaml
@@ -54,31 +54,30 @@ core you pull as a package, plus one thin config file you actually edit.
 To pull later changes: `esphome clean waveshare-va.yaml` (clears the package
 cache), then `esphome run waveshare-va.yaml`.
 
-## The patched es8311
+## How the shared I2S bus is handled
 
-The board wires the **ES8311 (DAC) and the ES7210 (ADC) to the same I2S clock
-pins**. Only one device can drive those clocks, and ESPHome's stock `es8311`
-cannot be made the I2S master, which means no capture and playback at once, i.e.
-no wake word while music plays.
+The board wires the **ES8311 (DAC) and the ES7210 (ADC) to the same BCLK/LRCLK
+pins**, and only one device can drive those clocks. ESPHome also cannot run a
+single I2S bus full-duplex: a microphone and a speaker on one bus each try to
+init the port, and the second fails with "Parent bus is busy".
 
-[sw3Dan](https://github.com/sw3Dan) solved this with a patched `es8311` in
-[`waveshare-s2-audio_esphome_voice`](https://github.com/sw3Dan/waveshare-s2-audio_esphome_voice),
-adding two options to ESPHome's stock component:
+The layout that works, all on **stock ESPHome components**:
 
-| Option | Why it exists |
-|---|---|
-| `force_master: true` | Sets the codec's MSC bit so the **ES8311 drives BCLK/LRCLK** while the ESP32 and the ES7210 stay slaves. Exactly one device may generate those clocks. |
-| `mclk_multiple: 256` | Fixes the MCLK/BCLK ratio maths so the codec's divider matches what the ESP32 emits on the MCLK pin. |
+- **Two I2S buses** (two ports) over the shared pins. The **mic bus is the I2S
+  master**: it is always capturing for the wake word, so it drives BCLK/LRCLK/MCLK
+  continuously. The **speaker bus is a slave** that reads the mic's clock, so it
+  never needs a port of its own to master.
+- The ES8311 and ES7210 are stock and slave to the mic's clock.
+- The mic is pinned to **16-bit** (the i2s_audio default is 32-bit); since the
+  mic is master it sets the frame's slot width, and a 32-bit frame against the
+  16-bit DAC comes out as noise.
 
-That work is the reason this board is usable at all, and it is gratefully
-vendored here in [`components/es8311/`](components/es8311/README.md) so this repo
-has no hard dependency on an external one. Everything else in it is stock
-upstream behaviour.
-
-Both options are still absent from upstream ESPHome (checked against
-`esphome/dev`, July 2026). **Upstreaming them would delete that folder and the
-`external_components:` block with it**, and would help any board that shares I2S
-clocks between a codec and an ADC (the Espressif Korvo boards do the same).
+This gives simultaneous capture + playback with no patched component. Earlier
+versions of this repo vendored [sw3Dan](https://github.com/sw3Dan)'s patched
+`es8311` (`force_master`), which was the original way to make this board work;
+it turned out the ESP-mastered two-bus layout does the same job with stock
+ESPHome, so the patch was dropped. The details live in the audio section of
+`base/core.yaml`.
 
 ## Repository layout
 
@@ -87,8 +86,6 @@ waveshare-va.yaml          # YOUR config: copy + edit this (pulls the rest from 
 secrets.example.yaml       # copy to secrets.yaml
 base/
   core.yaml                # the always-on core, pulled as a remote package
-components/
-  es8311/                  # vendored patched DAC component (force_master, mclk_multiple)
 docs/
   HARDWARE.md              # pinout, I2C map, gotchas
 scripts/
@@ -129,9 +126,11 @@ cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 
 ## Credits
 
-- **[sw3Dan](https://github.com/sw3Dan)**: the `es8311` `force_master` patch and
-  the original board config this started from.
-- **ESPHome**: the `es8311` component itself (`@kroimon`, `@kahrendt`) and
-  everything else.
+- **[sw3Dan](https://github.com/sw3Dan)**: the original board config this started
+  from, and the `es8311` `force_master` approach that first made it work.
+- **[jensenbox](https://github.com/jensenbox/waveshare-esp32-s3-audio)**: the
+  single-ESP-master I2S layout for this board that this repo's stock-component
+  audio setup is based on.
+- **ESPHome**: everything the firmware is built out of.
 - **[Home Assistant Voice PE](https://github.com/esphome/home-assistant-voice-pe)**:
   the sounds, and the phase/ducking model the LED state machine follows.

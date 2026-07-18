@@ -64,37 +64,47 @@ The TCA9555 has **no reset pin** (schematic pin 1 is `INT#`).
 ## The one thing that defines this board: shared I2S clocks
 
 ES8311 and ES7210 sit on the **same BCLK (13) / LRCK (14)**. Only one device may
-drive them. ESPHome models in and out as two `i2s_audio` buses, so if the ESP32
-were primary on both, two I2S peripherals would fight over the same lines.
+drive them, and **ESPHome cannot run a single i2s_audio bus full-duplex**: a
+microphone and a speaker on one bus each call `i2s_new_channel` on the port, and
+the second fails at runtime with `Parent bus is busy` (the speaker then crackles).
 
-**Stock ESPHome's `es8311` always configures the codec as I2S slave and has no
-way to change that.** Hence the patched component in `components/es8311/`:
+The layout that works on **stock ESPHome** (no patched es8311):
 
-- `force_master: true` sets the ES8311's **MSC bit (reg 0x00 bit 6)** so the
-  *codec* drives BCLK/LRCK from the ESP32's MCLK (GPIO12).
-- `mclk_multiple: 256` fixes the MCLK/BCLK divider maths.
-
-So the working shape is:
+- **Two i2s_audio buses** (two I2S ports) over the shared pins. The **mic bus is
+  the master** and the **speaker bus is a slave** reading its clock.
+- The mic is always capturing for the wake word, so as master it drives
+  BCLK/LRCK/MCLK **continuously** - which is what a slave speaker (and the ES8311
+  DAC) need. Making the mic the master also gives it a correct-rate stream; a
+  codec-mastered clock (the old `force_master` route) fed the mic garbage and
+  killed wake word.
+- **Pin the mic to 16-bit.** As master it sets the frame slot width, and the
+  i2s_audio default is 32-bit; a 32-bit frame against the 16-bit ES8311/speaker
+  doubles the bit clock they expect and playback comes out as noise.
 
 ```yaml
-audio_dac:
-  - platform: es8311           # from components/, NOT upstream
-    force_master: true
-    use_mclk: true
-    mclk_multiple: 256
+i2s_audio:
+  - id: i2s_input                 # mic bus = master (drives the shared clock)
+    i2s_mclk_pin: GPIO12
+    i2s_bclk_pin:  { number: GPIO13, allow_other_uses: true }
+    i2s_lrclk_pin: { number: GPIO14, allow_other_uses: true }
+  - id: i2s_output                # speaker bus = slave
+    i2s_bclk_pin:  { number: GPIO13, allow_other_uses: true }
+    i2s_lrclk_pin: { number: GPIO14, allow_other_uses: true }
+audio_dac:   { platform: es8311, id: es8311_dac }   # stock
+audio_adc:   { platform: es7210, id: adc_mic }      # stock
 microphone:
   - platform: i2s_audio
-    i2s_mode: secondary        # ESP is never the master
+    i2s_audio_id: i2s_input       # default i2s_mode: primary -> master
+    bits_per_sample: 16bit
 speaker:
   - platform: i2s_audio
-    i2s_mode: secondary        # ditto
-i2s_audio:                     # both buses declare 13/14 with:
-  #   allow_other_uses: true
+    i2s_audio_id: i2s_output
+    i2s_mode: secondary           # slave to the mic's clock
 ```
 
-**Check before assuming this is still needed:** if upstream ESPHome ever gains
-`force_master`, the whole `external_components:` block and `components/` folder
-should be deleted. As of July 2026 upstream does not have it.
+Historical note: earlier versions used sw3Dan's patched `es8311` with
+`force_master` (codec masters the clock). It works, but the ESP-mastered two-bus
+layout does the same on stock ESPHome, so the patch was removed.
 
 ## Gotchas that cost real time
 
@@ -143,10 +153,15 @@ should be deleted. As of July 2026 upstream does not have it.
 - **RGB vs GRB**: the demo says RGB and its own trailing comment says GRB, while
   WS2812B is conventionally GRB. Two sources favour `rgb_order: RGB`, but
   confirm with a pure-red test before trusting either.
-- **Amp pop**: Waveshare init order is codec first, amp second
-  (`es8311_codec_init()` then `Audio_PA_EN()`), 50 ms after each EXIO write. A
-  `RESTORE_DEFAULT_ON` amp switch has no such ordering, so suspect this if
-  power-up pops.
+- **Idle-amp hiss at boot.** The amp (PA_EN on EXIO8) enabled at boot amplifies
+  the undriven DAC line as a faint hiss until the first playback (after which the
+  i2s speaker, `timeout: never`, holds the line at clean silence). Fix by gating
+  the amp: `restore_mode: ALWAYS_OFF`, then turn it on from the media_player
+  `on_state` when playback starts and leave it on. **Do not** try to fix this by
+  playing a boot sound through the media player - a standalone boot announcement
+  leaves `media_player.is_announcing` stuck true, and `on_wake_word_detected`
+  then only ever stops that phantom announcement instead of starting Assist
+  (wake word detected, nothing happens).
 - **Battery monitoring is effectively unavailable**: the divider needs a 0 Ω
   resistor soldered (depopulated by default) and **enabling it kills the camera**.
   Ratio 3.0. Pin is GPIO1 per schematic, not GPIO8, which is stale demo code.

@@ -7,7 +7,7 @@
 #
 #   esphome run waveshare-va.yaml
 #
-# Everything else - the core config and the patched es8311 component - is pulled
+# Everything else - the core config - is pulled
 # from GitHub at compile time (see the `packages:` block), so this is the only
 # file you ever maintain. To pick up the latest changes later:
 #

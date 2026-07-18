@@ -7,9 +7,12 @@
 # the TCA9555 expander) and voice timers + an alarm clock.
 #
 # AUDIO LAYOUT
-# One full-duplex I2S bus with the ESP32 as master; the ES8311 (DAC) and ES7210
-# (ADC) both slave to it, so capture and playback run at once on stock ESPHome
-# components. Pinout: docs/HARDWARE.md.
+# The DAC and ADC share BCLK/LRCLK pins. Two I2S buses (two ports) ride the
+# shared pins: the mic bus is I2S master (always capturing, so it drives a
+# continuous clock) and the speaker bus is a slave that reads it. The ES8311
+# (DAC) and ES7210 (ADC) are stock and slave to the mic's clock. Capture and
+# playback run at once, on stock ESPHome, with no patched es8311 / force_master.
+# The full story is in the audio section below. Pinout: docs/HARDWARE.md.
 ###############################################################################
 
 substitutions:

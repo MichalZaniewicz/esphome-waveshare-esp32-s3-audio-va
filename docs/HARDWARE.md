@@ -45,8 +45,8 @@ tables list the same MCLK/SCLK/LRCK; the schematic lands one net set on both
 chips; and the demo opens a **single full-duplex I2S peripheral**
 (`i2s_new_channel(&chan_cfg, &tx_handle, &rx_handle)`).
 
-That single fact is why this repo needs a patched `es8311`, see
-[Why `force_master`](#why-force_master) below.
+That single shared clock pair is what shapes the whole audio setup, see
+[Shared I2S clocks](#shared-i2s-clocks) below.
 
 ## I2C: one bus, GPIO10/11
 
@@ -190,25 +190,29 @@ unavailable.
 
 ## Gotchas
 
-### Why force_master
+### Shared I2S clocks
 
-ES8311 and ES7210 share BCLK/LRCK. ESPHome models input and output as **two**
-`i2s_audio` buses, both declaring GPIO13/14 with `allow_other_uses: true`. If
-the ESP32 were I2S primary on both, two ESP32 I2S peripherals would drive the
-same physical lines, which is **clock contention**.
+ES8311 and ES7210 share BCLK/LRCK, so only one device may drive them. On top of
+that, **ESPHome cannot run a single `i2s_audio` bus full-duplex**: a microphone
+and a speaker on the same bus each call `i2s_new_channel` on the port, and the
+second fails at runtime with `Parent bus is busy` (the speaker then crackles).
 
-The fix is to make one external chip the sole clock master:
+The layout this firmware uses, all on stock ESPHome components:
 
-- ES8311 gets `force_master: true`, which sets the codec's **MSC bit (reg 0x00
-  bit 6)** so it drives BCLK/LRCK, derived from the ESP32's MCLK on GPIO12
-  (`use_mclk: true`, `mclk_multiple: 256`).
-- ESP32 mic bus gets `i2s_mode: secondary`
-- ESP32 speaker bus gets `i2s_mode: secondary`
-- ES7210 stays slave and follows the same clocks
+- **Two `i2s_audio` buses** (two I2S ports) over the shared GPIO13/14 (with
+  `allow_other_uses`). The **mic bus is the I2S master**, the **speaker bus is a
+  slave** reading its clock.
+- The mic is always capturing for the wake word, so as master it drives
+  BCLK/LRCK/MCLK **continuously** - exactly what a slave speaker and the ES8311
+  need. It also gives the mic a correct-rate stream.
+- The mic is pinned to **16-bit**: as master it sets the frame slot width, and
+  the i2s_audio default is 32-bit, which against the 16-bit DAC produces noise.
 
-**Stock ESPHome's `es8311` always configures slave (MSC=0)** and has no
-`force_master`. That is a real upstream gap, not a workaround for a config
-error, hence `components/es8311/`.
+The board's original ESPHome config (sw3Dan) instead made the **ES8311** the
+master via a patched component (`force_master`, setting the codec's MSC bit).
+That works, but it fed the ESP mic a wrong-rate stream that killed the wake word;
+the ESP-mastered two-bus layout above avoids the patch entirely. See
+`base/core.yaml` for the annotated config.
 
 ### ⚠️ Cold-boot failure of the ES7210 / LEDs: no verified fix
 
@@ -246,13 +250,15 @@ ESPHome's `tca9555` writes the direction registers itself, and the `amp_enable`
 GPIO switch with `restore_mode: RESTORE_DEFAULT_ON` drives PA_EN at boot. This
 matches sw3Dan's config, which is reported working.
 
-### Amp turn-on pop
+### Amp idle hiss / turn-on pop
 
 Waveshare's `Audio_Init()` orders it **codec first, amp second**
 (`es8311_codec_init()` then `Audio_PA_EN()`), with a 50 ms delay after each
-`Set_EXIO`. Our `amp_enable` switch restores ON at boot with no explicit
-ordering versus the codec. If you hear a pop on power-up, that is the first
-thing to look at.
+`Set_EXIO`. An amp left enabled at boot amplifies the undriven DAC line as a
+faint hiss until the first playback. This firmware gates the amp instead:
+`amp_enable` is `ALWAYS_OFF` at boot and the media_player `on_state` turns it on
+when playback starts (then leaves it on, since the speaker holds the line at
+clean silence via `timeout: never`).
 
 ### Strapping pins
 
