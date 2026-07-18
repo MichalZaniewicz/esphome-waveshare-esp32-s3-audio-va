@@ -631,8 +631,8 @@ light:
           width: 7
       - addressable_color_wipe:
           name: "Wipe"
-      # Scan / Twinkle / Flicker use the phase colour set by control_leds, so
-      # they still read as "listening/thinking/replying" while looking different.
+      # Scan / Twinkle use the phase colour set by control_leds, so they still
+      # read as "listening/thinking/replying" while looking different.
       - addressable_scan:
           name: "Scan"
           move_interval: 120ms
@@ -641,9 +641,6 @@ light:
           name: "Twinkle"
           twinkle_probability: 8%
           progress_interval: 40ms
-      - addressable_flicker:
-          name: "Flicker"
-          intensity: 12%
       - addressable_fireworks:
           name: "Fireworks"
           spark_probability: 12%
@@ -1090,7 +1087,6 @@ select:
       - Comet
       - Twinkle
       - Random Twinkle
-      - Flicker
       - Fireworks
       - Fire
       - Rainbow Slow
