@@ -478,6 +478,22 @@ voice_assistant:
           - micro_wake_word.start:
     - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: control_leds
+    # One-shot "ready" chime. It MUST run after micro_wake_word.start above: the
+    # speaker is a slave to the mic's I2S clock, so playing before the mic is
+    # capturing hangs the announcement (and then wake word stops working). The
+    # flag is set first so an HA reconnect can't replay it.
+    - if:
+        condition:
+          - lambda: 'return !id(boot_chime_done);'
+          - switch.is_on: boot_sound
+          - switch.is_off: diag_disable_mic
+        then:
+          - lambda: id(boot_chime_done) = true;
+          - delay: 1s            # let the mic-master clock settle
+          - script.execute:
+              id: play_sound
+              priority: true
+              sound_file: !lambda return id(wake_word_triggered_sound);
   on_client_disconnected:
     - voice_assistant.stop:
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
@@ -651,6 +667,10 @@ globals:
     restore_value: no
     initial_value: 'true'
   - id: improv_ble_in_progress
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: boot_chime_done
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -893,7 +913,8 @@ script:
   # Enable the "stop" wake word only around a long TTS reply.
   - id: activate_stop_word_once
     then:
-      - delay: 1s
+      # Arm the "stop" word immediately when a reply starts (no delay), so it
+      # works even for short replies, and disarm it when the reply finishes.
       - if:
           condition:
             switch.is_off: timer_ringing
@@ -1022,7 +1043,7 @@ switch:
     id: diag_disable_mic
     name: "Diag: disable microphone"
     icon: mdi:microphone-settings
-    entity_category: diagnostic
+    internal: true                      # diagnostic-only, not shown in HA
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF   # OFF = mic works as usual
     # These triggers also fire during setup() when the state is restored from
@@ -1095,6 +1116,14 @@ switch:
   - platform: template
     id: wake_sound
     name: Wake sound
+    icon: "mdi:bullhorn"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: boot_sound
+    name: Boot sound
     icon: "mdi:bullhorn"
     entity_category: config
     optimistic: true
@@ -1187,7 +1216,6 @@ sensor:
     id: next_timer
     name: "Next timer"
     update_interval: never
-    disabled_by_default: true
     device_class: duration
     unit_of_measurement: s
     icon: "mdi:timer"
@@ -1198,15 +1226,15 @@ text_sensor:
     id: next_timer_name
     name: "Next timer name"
     icon: "mdi:timer"
-    disabled_by_default: true
   - platform: template
     name: "Alarm time"
     id: alarm_time
     icon: mdi:bell-ring
+  # Published for the alarm/clock logic, but not shown in HA (it's just the
+  # device's own clock, which HA already has).
   - platform: template
-    name: "Current device time"
     id: current_time
-    icon: mdi:clock
+    internal: true
 
 button:
   - platform: factory_reset
