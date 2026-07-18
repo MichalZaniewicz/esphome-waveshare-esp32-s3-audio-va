@@ -1095,8 +1095,16 @@ select:
       - Fire
       - Rainbow Slow
       - Rainbow Fast
-    on_value:
-      - script.execute: control_leds
+    # This trigger also fires while restore_value replays the saved option during
+    # setup() (HARDWARE priority), before the light/RMT and voice_assistant are
+    # up. Running control_leds then paints an effect on an uninitialised strip and
+    # crashes the boot, so gate it until on_boot (-100) clears init_in_progress.
+    on_value: &repaint_if_ready
+      - if:
+          condition:
+            lambda: 'return !id(init_in_progress);'
+          then:
+            - script.execute: control_leds
   - platform: template
     name: "Thinking effect"
     id: thinking_effect
@@ -1106,8 +1114,7 @@ select:
     restore_value: true
     initial_option: "Pulse Slow"
     options: *va_ring_effects
-    on_value:
-      - script.execute: control_leds
+    on_value: *repaint_if_ready
   - platform: template
     name: "Replying effect"
     id: replying_effect
@@ -1117,8 +1124,7 @@ select:
     restore_value: true
     initial_option: "Wipe"
     options: *va_ring_effects
-    on_value:
-      - script.execute: control_leds
+    on_value: *repaint_if_ready
 
   - platform: logger
     id: logger_select
