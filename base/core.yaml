@@ -915,13 +915,20 @@ script:
 
   # Enable the "stop" wake word only around a long TTS reply.
   - id: activate_stop_word_once
+    mode: restart          # on_intent_progress and on_tts_start may both call it
     then:
-      # Arm the "stop" word immediately when a reply starts (no delay), so it
-      # works even for short replies, and disarm it when the reply finishes.
       - if:
           condition:
             switch.is_off: timer_ringing
           then:
+            # Wait for the reply to actually START playing before arming. This
+            # trigger fires a moment BEFORE the announcement begins, so checking
+            # "not announcing" first would pass instantly and disarm in the same
+            # tick (the bug that made stop never work).
+            - wait_until:
+                condition:
+                  media_player.is_announcing:
+                timeout: 3s
             - micro_wake_word.enable_model: stop
             - logger.log: "stop word ARMED (reply playing)"
             - wait_until:
