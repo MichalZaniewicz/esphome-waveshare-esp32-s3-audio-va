@@ -8,6 +8,10 @@ the little AI smart-speaker devkit with a dual-mic array, an ES8311 codec, three
 buttons and a 7-LED RGB ring. Pure ESPHome, no custom C firmware: an always-on
 core you pull as a package, plus one thin config file you actually edit.
 
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/0eae0230-de47-4f20-a6ea-47f65af35f86" controls width="400"></video>
+</div>
+
 > **Status: stable (v1.0.0).** Wake word, STT/TTS, clean playback and the LED
 > ring are confirmed on-device. Full docs are in the
 > [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki);
