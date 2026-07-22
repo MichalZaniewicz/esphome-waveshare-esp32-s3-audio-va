@@ -19,6 +19,8 @@ core you pull as a package, plus one thin config file you actually edit.
 
 ## What it does
 
+![Home Assistant entities, the LED ring animation picker, the media player and the wake-word controls](docs/features.jpg)
+
 - **Voice assistant**: on-device wake word (`alexa`, `okay_nabu`) via
   `micro_wake_word`, the full Home Assistant Assist pipeline (STT / LLM / TTS),
   a wake beep and music ducking while it listens.
