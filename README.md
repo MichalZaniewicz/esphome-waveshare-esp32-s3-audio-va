@@ -30,8 +30,8 @@ core you pull as a package, plus one thin config file you actually edit.
 - **LED ring**: one state machine drives it. Boot, no-Wi-Fi, no-HA, listening,
   thinking, replying, timer counting, ringing, volume changed - each a distinct
   colour/effect. Brightness and the animation for the listening / thinking /
-  replying phases are pickable from HA, from 15 effects: solid, pulses, breathe,
-  wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
+  replying phases are pickable from HA: solid plus 14 animations - pulses,
+  breathe, wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
 - **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
   in HA. (A daily-alarm engine is present but its entities are hidden by default.)
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
@@ -74,7 +74,7 @@ has the full guide:
 - **[Installation](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Installation)**: first flash, Home Assistant setup, updating.
 - **[Configuration](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Configuration)**: every substitution and every Home Assistant entity.
 - **[Audio architecture](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Audio-architecture)**: the shared-I2S two-bus design, in depth.
-- **[LED ring](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/LED-ring)**: the state machine and all 15 effects.
+- **[LED ring](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/LED-ring)**: the state machine and every ring effect.
 - **[Hardware](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Hardware)**: pinout, I2C map, and sourced gotchas.
 - **[Troubleshooting](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Troubleshooting)** and **[FAQ](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/FAQ)**.
 
