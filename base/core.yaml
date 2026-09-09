@@ -56,6 +56,13 @@ substitutions:
   # ---------------------------------------------------------------------------
   hidden_ssid: 'false'      # true = fast_connect, required for a hidden SSID
 
+  # Software off: long-press the onboard BOOT button (GPIO0) for ~2 s to enter
+  # deep sleep; a short press wakes the board again. Off by default - set to
+  # 'true' in your thin config to enable it. Note the savings on this board are
+  # modest: the ES8311/ES7210 codecs and the LED strip stay powered (no hardware
+  # shutdown line), so this is closer to a low-power idle than a true power off.
+  enable_deep_sleep: 'false'
+
   # Media player volume clamps (the onboard amp distorts near the top).
   volume_min: '0.4'
   volume_max: '0.8'
@@ -203,6 +210,19 @@ api:
 ota:
   - platform: esphome
     id: ota_esphome
+
+# Software off. No run_duration / sleep_duration, so the node never sleeps on
+# its own: the only path in is the BOOT-button long-press below, which calls
+# deep_sleep.enter only when ${enable_deep_sleep} is 'true'. Wake is a low level
+# on GPIO0 (BOOT pressed). GPIO0 is a strapping pin - holding BOOT through a
+# power cycle still drops the chip into the serial bootloader, unavoidably.
+deep_sleep:
+  id: deep_sleep_ctrl
+  wakeup_pin:
+    number: GPIO0
+    inverted: true            # BOOT is active-low; wake when it is pulled low
+    allow_other_uses: true    # GPIO0 is also the boot_button binary_sensor
+  wakeup_pin_mode: INVERT_WAKEUP   # BOOT still held at sleep time -> flip, don't loop
 
 i2c:
   - id: internal_i2c
@@ -1355,7 +1375,6 @@ button:
     id: restart_button
     name: "Restart"
     entity_category: config
-    disabled_by_default: true
     icon: "mdi:restart"
 
 binary_sensor:
@@ -1385,3 +1404,31 @@ binary_sensor:
       inverted: true
     on_press:
       - media_player.volume_up: external_media_player
+
+  # Onboard BOOT button (GPIO0, a strapping pin, direct - not via the expander).
+  # Held for 2 to 10 s it enters deep sleep, but only when ${enable_deep_sleep}
+  # is 'true'; otherwise the long-press does nothing. A short press wakes the
+  # board from deep sleep (handled by the deep_sleep wakeup_pin, not this
+  # sensor). Disabled in HA by default - it exists here for the sleep gesture.
+  - platform: gpio
+    id: boot_button
+    name: "BOOT button"
+    entity_category: diagnostic
+    disabled_by_default: true
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+      allow_other_uses: true
+    on_click:
+      min_length: 2s
+      max_length: 10s
+      then:
+        - if:
+            condition:
+              lambda: 'return strcmp("${enable_deep_sleep}", "true") == 0;'
+            then:
+              - logger.log: "BOOT long-press: entering deep sleep"
+              - deep_sleep.enter: deep_sleep_ctrl
