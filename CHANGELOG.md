@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Mic gain slider snapped back to its old value in Home Assistant.** The
+  `Mic gain (ES7210)` number had a `set_action` but was not `optimistic`, so the
+  new value was never published back. The ES7210 was reprogrammed correctly (the
+  device log showed the new gain), but HA kept displaying the previous value and
+  reset the slider on the next visit. The number now publishes its state after
+  every change.
+- **A saved mic gain was not applied to the ES7210 after a reboot.** A template
+  number restores its value from flash in `setup()` and publishes it, but does
+  not run `set_action`, so HA showed the saved gain while the codec started at
+  the default from `audio_adc`. `on_boot` (priority -100) now pushes the restored
+  value to the ES7210. `set_mic_gain()` is safe to call there because the driver
+  stores the value even before its own setup completes.
+
 ## [1.0.0] - 2026-07-18
 
 First stable release. The full voice assistant is confirmed on hardware, the
