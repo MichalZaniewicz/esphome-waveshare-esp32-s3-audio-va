@@ -111,6 +111,11 @@ esphome:
         - lambda: |-
             setenv("TZ", id(saved_time_zone).c_str(), 1);
             tzset();
+        # Push the mic gain restored from flash into the ES7210. The codec boots
+        # with `mic_gain` from audio_adc, so without this a saved value would show
+        # in HA while the hardware sat at the default.
+        - lambda: |-
+            id(adc_mic).set_mic_gain(id(mic_gain_db).state);
         # Diagnostics: an explicit OFF switch that silences the mic completely.
         # ON = microphone disabled. (This used to be inverted, so the mic was
         # stopped on every boot with the switch in its default OFF position.)
@@ -1311,6 +1316,12 @@ number:
     restore_value: true
     initial_value: 24
     mode: slider
+    # Without `optimistic`, a template number with only a set_action never
+    # publishes the new value back: the slider snapped back to 24 dB in HA even
+    # though the ES7210 had already been reprogrammed. The restored value is
+    # applied to the codec in on_boot (-100), since TemplateNumber::setup() only
+    # publishes it and does not run set_action.
+    optimistic: true
     set_action:
       - lambda: |-
           id(adc_mic).set_mic_gain(x);
