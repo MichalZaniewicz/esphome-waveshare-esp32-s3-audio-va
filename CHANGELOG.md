@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.1] - 2026-09-20
+
+Patch release fixing the mic gain control. Tagged `v1.0.1`; the example config
+now pins this tag.
 
 ### Fixed
 - **Mic gain slider snapped back to its old value in Home Assistant.** The
