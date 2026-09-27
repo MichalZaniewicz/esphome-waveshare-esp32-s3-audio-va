@@ -422,11 +422,6 @@ micro_wake_word:
       id: okay_nabu
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
-    # Defaults (cutoff 0.50, window 5) end STT capture after ~1.2-1.4s of a
-    # short pause, cutting off longer commands. Looser cutoff + wider window
-    # = more tolerance for pauses/breaths before "end of speech" fires.
-    probability_cutoff: 0.3
-    sliding_window_size: 10
   on_wake_word_detected:
     # Muted (software mute switch)? Do nothing at all.
     - if:
