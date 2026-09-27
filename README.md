@@ -145,6 +145,29 @@ What lives in `waveshare-va.yaml`:
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
 
+### Custom wake word models
+
+The firmware has two wake word slots, `alexa` and `okay_nabu`. Either one can be
+replaced with any microWakeWord v2 model by extending it by `id` in your own
+config:
+
+```yaml
+micro_wake_word:
+  models:
+    - id: !extend alexa
+      model: https://example.com/my_wake_word.json
+      # probability_cutoff: 0.85   # optional, overrides the manifest default
+```
+
+The **Wake word sensitivity** presets are relative to each model's default
+cutoff (its manifest value, or `probability_cutoff:` above): *Slightly
+sensitive* uses the default, *Moderately* and *Very sensitive* lower it step by
+step. For exact control, set the select to **Custom** and use the **Wake word 1
+threshold** (the `alexa` slot) and **Wake word 2 threshold** (the `okay_nabu`
+slot) sliders, from 0.50 to 0.99. Lower values trigger more easily and give more
+false activations. On first boot both sliders start at their model's default
+cutoff.
+
 ## Claude Code skill
 
 This repo ships a [Claude Code](https://claude.com/claude-code) skill at

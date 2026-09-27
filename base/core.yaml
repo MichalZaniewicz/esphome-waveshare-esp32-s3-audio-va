@@ -116,6 +116,22 @@ esphome:
         # in HA while the hardware sat at the default.
         - lambda: |-
             id(adc_mic).set_mic_gain(id(mic_gain_db).state);
+        # First boot only: start the wake word threshold sliders at the models'
+        # own default cutoffs (manifest or YAML), not at the fixed initial_value.
+        - if:
+            condition:
+              lambda: return !id(wake_word_thresholds_seeded);
+            then:
+              - number.set:
+                  id: wake_word_1_threshold
+                  value: !lambda return clamp(roundf(id(alexa).get_default_probability_cutoff() / 2.55f) / 100.0f, 0.5f, 0.99f);
+              - number.set:
+                  id: wake_word_2_threshold
+                  value: !lambda return clamp(roundf(id(okay_nabu).get_default_probability_cutoff() / 2.55f) / 100.0f, 0.5f, 0.99f);
+              - lambda: id(wake_word_thresholds_seeded) = true;
+        # Apply the wake word cutoffs once the select and both sliders hold
+        # their restored values (their own on_value may fire before that).
+        - script.execute: apply_wake_word_sensitivity
         # Diagnostics: an explicit OFF switch that silences the mic completely.
         # ON = microphone disabled. (This used to be inverted, so the mic was
         # stopped on every boot with the switch in its default OFF position.)
@@ -758,6 +774,12 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'true'
+  # Set once the wake word threshold sliders have been seeded from the models'
+  # default cutoffs, so later boots keep whatever the user dialled in.
+  - id: wake_word_thresholds_seeded
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
   - id: improv_ble_in_progress
     type: bool
     restore_value: no
@@ -790,6 +812,38 @@ globals:
     restore_value: no
 
 script:
+  # Push the wake word cutoffs for the current "Wake word sensitivity" option.
+  # Cutoffs are quantised uint8 (255 = 1.0). The preset offsets follow the
+  # okay_nabu figures measured on the Dinner Party Corpus: 0.85 -> 0.000 FAPH,
+  # 0.69 -> 0.376 FAPH, 0.56 -> 0.751 FAPH (FAPH = false accepts per hour).
+  - id: apply_wake_word_sensitivity
+    mode: restart
+    then:
+      - lambda: |-
+          std::string opt = id(wake_word_sensitivity).current_option();
+          auto to_cutoff = [](float p) -> uint8_t {
+            return (uint8_t) roundf(std::min(std::max(p, 0.0f), 1.0f) * 255.0f);
+          };
+          auto preset = [&](micro_wake_word::WakeWordModel *m, int offset) {
+            m->set_probability_cutoff((uint8_t) std::max(64, (int) m->get_default_probability_cutoff() - offset));
+          };
+          if (opt == "Custom") {
+            // Sliders not published yet (early in setup): on_boot re-runs this.
+            float t1 = id(wake_word_1_threshold).state;
+            float t2 = id(wake_word_2_threshold).state;
+            if (std::isnan(t1) || std::isnan(t2)) return;
+            id(alexa).set_probability_cutoff(to_cutoff(t1));
+            id(okay_nabu).set_probability_cutoff(to_cutoff(t2));
+          } else {
+            int offset = 0;                                   // Slightly: model default
+            if (opt == "Moderately sensitive") offset = 40;   // about -0.16
+            else if (opt == "Very sensitive") offset = 75;    // about -0.29
+            preset(id(alexa), offset);
+            preset(id(okay_nabu), offset);
+          }
+          ESP_LOGI("wake_word", "Sensitivity '%s': cutoffs %u / %u", opt.c_str(),
+                   id(alexa).get_probability_cutoff(), id(okay_nabu).get_probability_cutoff());
+
   - id: flash_ring
     then:
       - light.turn_on: { id: status_ring, red: 1.0, green: 0.0, blue: 0.0, brightness: 100%, effect: "None" }
@@ -1070,7 +1124,12 @@ script:
           }
 
 select:
+  # Presets are relative to each model's own default cutoff (from its manifest,
+  # or `probability_cutoff:` in YAML), so they stay sensible when a model is
+  # swapped for a custom one. "Custom" uses the two threshold sliders instead.
+  # The cutoffs are applied by apply_wake_word_sensitivity.
   - platform: template
+    id: wake_word_sensitivity
     name: "Wake word sensitivity"
     optimistic: true
     initial_option: Slightly sensitive
@@ -1080,21 +1139,9 @@ select:
       - Slightly sensitive
       - Moderately sensitive
       - Very sensitive
-    # Probability cutoffs are quantised uint8 (255 = 1.0); the comment on each
-    # line is the floating point value. FAPH = false accepts per hour measured
-    # against the Dinner Party Corpus. Values apply to the models pinned above.
+      - Custom
     on_value:
-      - lambda: |-
-          if (x == "Slightly sensitive") {
-            id(alexa).set_probability_cutoff(230);        // 0.90
-            id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH (manifest default)
-          } else if (x == "Moderately sensitive") {
-            id(alexa).set_probability_cutoff(191);        // 0.75
-            id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH
-          } else if (x == "Very sensitive") {
-            id(alexa).set_probability_cutoff(128);        // 0.50
-            id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH
-          }
+      - script.execute: apply_wake_word_sensitivity
 
   # Pick the ring animation for each voice-assistant phase, from HA, live.
   # The option strings must match effect names in the light's `effects:` block
@@ -1323,6 +1370,39 @@ number:
       - logger.log:
           format: "[MIC] ES7210 gain -> %.1f dB"
           args: ["x"]
+
+  # Per-model detection thresholds, used when "Wake word sensitivity" is set to
+  # "Custom". Wake word 1 = the `alexa` model slot, 2 = the `okay_nabu` slot.
+  # On first boot they are seeded from the models' default cutoffs (on_boot).
+  - platform: template
+    id: wake_word_1_threshold
+    name: "Wake word 1 threshold"
+    icon: mdi:tune-vertical
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.5
+    max_value: 0.99
+    step: 0.01
+    initial_value: 0.9
+    mode: slider
+    on_value:
+      - script.execute: apply_wake_word_sensitivity
+
+  - platform: template
+    id: wake_word_2_threshold
+    name: "Wake word 2 threshold"
+    icon: mdi:tune-vertical
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.5
+    max_value: 0.99
+    step: 0.01
+    initial_value: 0.85
+    mode: slider
+    on_value:
+      - script.execute: apply_wake_word_sensitivity
 
   - platform: template
     id: led_ring_brightness

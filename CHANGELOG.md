@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Per-wake-word threshold sliders.** A new **Custom** option in *Wake word
+  sensitivity* hands control to two sliders, *Wake word 1 threshold* (`alexa`
+  slot) and *Wake word 2 threshold* (`okay_nabu` slot), from 0.50 to 0.99. On
+  first boot they start at each model's default cutoff. This makes a custom
+  wake word model tunable without editing the firmware.
+- **Opt-in deep sleep** on a long press of the BOOT button (GPIO0), behind the
+  `enable_deep_sleep` substitution (off by default).
+
+### Changed
+- **Wake word sensitivity presets are relative to each model's default
+  cutoff** instead of fixed values tuned for the stock models, so they stay
+  sensible after swapping a model. *Moderately sensitive* is the default minus
+  0.16, *Very sensitive* the default minus 0.29. With the stock `alexa` model,
+  *Very sensitive* is now 0.61 instead of 0.50 (`okay_nabu` is effectively
+  unchanged).
+- **The Restart button is enabled by default** in Home Assistant.
+
 ## [1.0.1] - 2026-09-20
 
 Patch release fixing the mic gain control. Tagged `v1.0.1`; the example config
