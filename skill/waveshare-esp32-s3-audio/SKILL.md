@@ -170,6 +170,15 @@ word. The ESP-mastered two-bus layout needs no patched component.
   leaves `media_player.is_announcing` stuck true, and `on_wake_word_detected`
   then only ever stops that phantom announcement instead of starting Assist
   (wake word detected, nothing happens).
+- **HTTPS-only Home Assistant stalls the pipeline.** If HA serves port 8123 over
+  HTTPS with a certificate that does not cover the LAN address the device reaches
+  it by, every announcement/TTS fetch fails certificate verification and the
+  device holds in `STREAMING_MICROPHONE` with no `Starting STT by VAD` line. In
+  the log this is **identical** to a too-tight `vad` threshold; the tell is
+  `esp-x509-crt-bundle: Failed to verify certificate` /
+  `mbedtls_ssl_handshake returned -0x3000` / `Connection failed, sock < 0`. The
+  fix is HA-side, not firmware: set the HA Internal URL to `http://<ip>:8123`, or
+  terminate TLS at a reverse proxy and keep HA's own `http:` server plain.
 - **Battery monitoring is effectively unavailable**: the divider needs a 0 Ω
   resistor soldered (depopulated by default) and **enabling it kills the camera**.
   Ratio 3.0. Pin is GPIO1 per schematic, not GPIO8, which is stale demo code.
