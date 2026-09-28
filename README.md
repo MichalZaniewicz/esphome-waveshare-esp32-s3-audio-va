@@ -25,7 +25,11 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 > [!TIP]
 > ⭐ **Enjoying this project?** Every star is real motivation to keep it going.
 >
+> ☕ Want to say thanks another way? You can [buy me a coffee](https://buymeacoffee.com/zanula).
+>
 > [![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=social)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va)
+
+[![Buy me a coffee](https://img.shields.io/badge/BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/zanula)
 
 ## What it does
 
