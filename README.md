@@ -26,10 +26,12 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 > ⭐ **Enjoying this project?** Every star is real motivation to keep it going.
 >
 > ☕ Want to say thanks another way? You can [buy me a coffee](https://buymeacoffee.com/zanula).
->
-> [![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=social)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va)
 
-[![Buy me a coffee](https://img.shields.io/badge/BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/zanula)
+<!-- The badges live OUTSIDE the alert on purpose: Home Assistant rewrites a
+GitHub alert into <ha-alert> and drops every child whose textContent is empty,
+which silently removes any <img> placed inside it. -->
+
+[![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=for-the-badge&logo=github&label=STAR%20THIS%20REPO&labelColor=555555&color=ffc107)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va) [![Buy me a coffee](https://img.shields.io/badge/BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/zanula)
 
 ## What it does
 
