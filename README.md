@@ -210,12 +210,12 @@ micro_wake_word:
 The **Wake word sensitivity** presets are relative to each model's default
 cutoff (its manifest value, or `probability_cutoff:` above): *Slightly
 sensitive* uses the default, *Moderately* and *Very sensitive* lower it step by
-step. For exact control, set the select to **Custom** and use the **Wake word 1
-threshold** (the `alexa` slot) and **Wake word 2 threshold** (the `okay_nabu`
-slot) sliders, from 0.50 to 0.99. Lower values trigger more easily and give more
-false activations. On first boot both sliders start at their model's default
-cutoff. `hey_jarvis` and `hey_mycroft` have no slider; in **Custom** they keep
-their default cutoff.
+step. For exact control, set the select to **Custom** and use the **Wake word
+threshold** slider, from 0.50 to 0.99. It applies to whichever wake word is
+active. Lower values trigger more easily and give more false activations. On
+first boot the slider starts at the active model's default cutoff; the models
+differ (0.90 for Alexa, 0.97 for Okay Nabu), so revisit it after changing the
+wake word.
 
 ## Claude Code skill
 
