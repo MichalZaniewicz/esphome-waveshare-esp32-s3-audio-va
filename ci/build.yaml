@@ -1,0 +1,11 @@
+# Build target for CI (.github/workflows/build.yml). Unlike waveshare-va.yaml,
+# which pulls base/core.yaml from GitHub at a pinned tag, this includes the core
+# from the working tree, so the commit under test is what gets compiled.
+# The workflow copies secrets.example.yaml to ci/secrets.yaml before building.
+
+substitutions:
+  name: waveshare-va-ci
+  friendly_name: "Waveshare Voice CI"
+
+packages:
+  core: !include ../base/core.yaml
