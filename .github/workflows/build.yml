@@ -17,8 +17,10 @@ on:
       - "skill/**"
   workflow_dispatch:
 
+# A newer push to a pull request supersedes the running build. Branch pushes
+# always run to completion, so a commit never ends up marked as cancelled.
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
 
 jobs:

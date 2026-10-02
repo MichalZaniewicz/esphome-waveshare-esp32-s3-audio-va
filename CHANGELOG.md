@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.1] - 2026-10-02
+
+Tagged `v1.1.1`; the example config now pins this tag.
+
+### Changed
+- **One wake word threshold slider instead of two.** *Wake word threshold*
+  replaces *Wake word 1 threshold* and *Wake word 2 threshold*, which only
+  covered the `alexa` and `okay_nabu` slots. In **Custom** sensitivity the single
+  slider applies to whichever wake word is active, including Hey Jarvis and Hey
+  Mycroft. On first boot it starts at the active model's default cutoff. The two
+  old entities become unavailable in Home Assistant and can be deleted.
+
 ## [1.1.0] - 2026-10-02
 
 Feature release: more wake words, a night mode, tunable wake word thresholds
