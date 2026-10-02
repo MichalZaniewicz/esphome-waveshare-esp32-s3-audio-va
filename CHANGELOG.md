@@ -1,6 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.1] - 2026-10-02
+
+Tagged `v1.1.1`; the example config now pins this tag.
 
 ### Changed
 - **One wake word threshold slider instead of two.** *Wake word threshold*
