@@ -56,7 +56,7 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 
 ## Quick start
 
-> Requires **ESPHome 2025.8.0+**.
+> Requires **ESPHome 2026.8.0+**.
 
 1. Copy `secrets.example.yaml` to `secrets.yaml` and fill in your Wi-Fi. The
    native API is unencrypted by default; enable encryption in `base/core.yaml`

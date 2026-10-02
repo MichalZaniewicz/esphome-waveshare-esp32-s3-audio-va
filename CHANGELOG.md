@@ -33,6 +33,9 @@
   *Very sensitive* is now 0.61 instead of 0.50 (`okay_nabu` is effectively
   unchanged).
 - **The Restart button is enabled by default** in Home Assistant.
+- **Minimum ESPHome version is now 2026.8.0.** The LED ring uses
+  `channel_colors` in place of `rgb_order`, which ESPHome deprecated and will
+  remove in 2027.3.0.
 - **Mic gain slider moves in 3 dB steps, 0 to 36 dB** (was 1.5 dB steps up to
   37.5 dB). The ES7210 gain register only has 3 dB resolution below 33 dB, so
   every second slider position did nothing. A saved off-grid value keeps
