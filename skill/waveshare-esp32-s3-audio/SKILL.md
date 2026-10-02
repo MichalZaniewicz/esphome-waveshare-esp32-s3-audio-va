@@ -159,7 +159,7 @@ word. The ESP-mastered two-bus layout needs no patched component.
   for *behaviour* (which EXIO gets driven, init order).
 - **The HA forum thread swaps I2C**: it says SDA=10/SCL=11. It's SDA=11, SCL=10.
 - **RGB vs GRB**: the demo says RGB and its own trailing comment says GRB, while
-  WS2812B is conventionally GRB. Two sources favour `rgb_order: RGB`, but
+  WS2812B is conventionally GRB. Two sources favour `channel_colors: RGB`, but
   confirm with a pure-red test before trusting either.
 - **Idle-amp hiss at boot.** The amp (PA_EN on EXIO8) enabled at boot amplifies
   the undriven DAC line as a faint hiss until the first playback (after which the

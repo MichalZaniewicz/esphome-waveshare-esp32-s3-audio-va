@@ -23,7 +23,7 @@ which silently removes any <img> placed inside it. -->
   <video src="https://github.com/user-attachments/assets/0eae0230-de47-4f20-a6ea-47f65af35f86" controls width="400"></video>
 </div>
 
-> **Status: stable (v1.0.1).** Wake word, STT/TTS, clean playback and the LED
+> **Status: stable (v1.1.0).** Wake word, STT/TTS, clean playback and the LED
 > ring are confirmed on-device. Full docs are in the
 > [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki);
 > the release history is in [CHANGELOG.md](CHANGELOG.md).
@@ -37,9 +37,10 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 
 ![Home Assistant entities, the LED ring animation picker, the media player and the wake-word controls](docs/features.jpg)
 
-- **Voice assistant**: on-device wake word (`alexa`, `okay_nabu`) via
-  `micro_wake_word`, the full Home Assistant Assist pipeline (STT / LLM / TTS),
-  a wake beep and music ducking while it listens.
+- **Voice assistant**: on-device wake word via `micro_wake_word` (Alexa, Okay
+  Nabu, Hey Jarvis or Hey Mycroft, picked in Home Assistant), the full Home
+  Assistant Assist pipeline (STT / LLM / TTS), a wake beep and music ducking
+  while it listens.
 - **Simultaneous music and announcements**: a mixer speaker blends the media and
   announcement pipelines, so a doorbell announcement ducks the music instead of
   fighting it. Both are exposed to Music Assistant.
@@ -53,12 +54,15 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
 - **Boot chime**: a short "ready" sound once the device connects to HA
   (toggleable, and it also settles the amp so the ring boots silent).
-- **Tunable live from HA**: microphone mute, ES7210 mic gain, LED brightness and
-  wake-word sensitivity are all entities, so there's no reflashing to tune it.
+- **Night mode**: one switch dims the ring to its own brightness and skips the
+  wake beep and boot chime. Drive it from any Home Assistant automation.
+- **Tunable live from HA**: the wake word, microphone mute, ES7210 mic gain, LED
+  brightness and wake-word sensitivity are all entities, so there's no
+  reflashing to tune it.
 
 ## Quick start
 
-> Requires **ESPHome 2025.8.0+**.
+> Requires **ESPHome 2026.8.0+**.
 
 1. Copy `secrets.example.yaml` to `secrets.yaml` and fill in your Wi-Fi. The
    native API is unencrypted by default; enable encryption in `base/core.yaml`
@@ -75,9 +79,10 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
    Install.
 4. In Home Assistant: the new ESPHome device appears, open **Configure** and
    assign an Assist pipeline.
-5. Say "Alexa" (or "OK Nabu"). The ring should go violet.
+5. Say "Alexa". The ring should go violet. To use another wake word, change
+   **Wake word** on the device page (see [Wake words](#wake-words)).
 
-The example config pins the `v1.0.1` release tag, so a build is reproducible. To
+The example config pins the `v1.1.0` release tag, so a build is reproducible. To
 move to a newer release, bump `ref:` in the `packages:` block to a later tag (or
 `main` to track the latest), then `esphome clean waveshare-va.yaml` (clears the
 package cache) and `esphome run waveshare-va.yaml`.
@@ -122,6 +127,10 @@ waveshare-va.yaml          # YOUR config: copy + edit this (pulls the rest from 
 secrets.example.yaml       # copy to secrets.yaml
 base/
   core.yaml                # the always-on core, pulled as a remote package
+ci/
+  build.yaml               # CI build target: compiles the core from the working tree
+.github/workflows/
+  build.yml                # compiles the firmware on every push and pull request
 docs/
   HARDWARE.md              # pinout, I2C map, gotchas
 scripts/
@@ -135,8 +144,8 @@ skill/
 
 Everything worth changing day to day is a Home Assistant entity, not a config
 edit: mic gain, LED brightness, the ring animation per assistant phase
-(Listening / Thinking / Replying effect), wake-word sensitivity, wake sound,
-boot sound, microphone mute.
+(Listening / Thinking / Replying effect), the wake word and its sensitivity,
+night mode, wake sound, boot sound, microphone mute.
 
 What lives in `waveshare-va.yaml`:
 
@@ -150,6 +159,63 @@ What lives in `waveshare-va.yaml`:
 
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
+
+### Wake words
+
+The firmware ships four wake word models: `alexa` (the default), `okay_nabu`,
+`hey_jarvis` and `hey_mycroft`. Pick the active one with the **Wake
+word** select on the device page in Home Assistant; the choice is stored on the
+device and survives reboots and updates.
+
+If several satellites share one Home Assistant instance and can hear the same
+voice, give each a different wake word. Home Assistant ignores a wake word it
+already heard within the last two seconds, on any device, so two satellites on
+the same word cancel each other out (the second one beeps and does nothing).
+
+### Night mode
+
+The **Night mode** switch dims the ring to **Night LED Ring Brightness** and
+skips the wake beep and the boot chime. Replies, timers and the alarm still
+play at the normal volume. It is a plain switch, so any automation can drive it:
+
+```yaml
+automation:
+  - alias: Voice satellite night mode
+    triggers:
+      - trigger: sun
+        event: sunset
+        id: "on"
+      - trigger: sun
+        event: sunrise
+        id: "off"
+    actions:
+      - action: switch.turn_{{ trigger.id }}
+        target:
+          entity_id: switch.waveshare_va_night_mode
+```
+
+### Custom wake word models
+
+Any of the four slots can be replaced with any microWakeWord v2 model by
+extending it by `id` in your own config:
+
+```yaml
+micro_wake_word:
+  models:
+    - id: !extend alexa
+      model: https://example.com/my_wake_word.json
+      # probability_cutoff: 0.85   # optional, overrides the manifest default
+```
+
+The **Wake word sensitivity** presets are relative to each model's default
+cutoff (its manifest value, or `probability_cutoff:` above): *Slightly
+sensitive* uses the default, *Moderately* and *Very sensitive* lower it step by
+step. For exact control, set the select to **Custom** and use the **Wake word 1
+threshold** (the `alexa` slot) and **Wake word 2 threshold** (the `okay_nabu`
+slot) sliders, from 0.50 to 0.99. Lower values trigger more easily and give more
+false activations. On first boot both sliders start at their model's default
+cutoff. `hey_jarvis` and `hey_mycroft` have no slider; in **Custom** they keep
+their default cutoff.
 
 ## Claude Code skill
 

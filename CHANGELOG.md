@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.1.0] - 2026-10-02
+
+Feature release: more wake words, a night mode, tunable wake word thresholds
+and a CI build. Tagged `v1.1.0`; the example config now pins this tag. Requires
+ESPHome 2026.8.0 or newer.
+
+### Added
+- **Two more wake words: Hey Jarvis and Hey Mycroft**, next to Alexa and Okay
+  Nabu. The active one is picked with the **Wake word** select on the device
+  page in Home Assistant. Models that are not selected are not loaded, so they
+  cost flash only. Giving each satellite its own wake word avoids the
+  `duplicate_wake_up_detected` beep-and-nothing when two satellites on one Home
+  Assistant instance hear the same word.
+- **Night mode.** A **Night mode** switch dims the ring to the new **Night LED
+  Ring Brightness** slider and skips the wake beep and the boot chime. Replies,
+  timers and the alarm are unaffected.
+- **CI build.** A GitHub Actions workflow compiles the firmware with the latest
+  ESPHome release on every push and pull request (`ci/build.yaml` builds the
+  core from the working tree).
+- The mic gain restored from flash at boot is now logged
+  (`[MIC] restored ES7210 gain -> ... dB`).
+- **Per-wake-word threshold sliders.** A new **Custom** option in *Wake word
+  sensitivity* hands control to two sliders, *Wake word 1 threshold* (`alexa`
+  slot) and *Wake word 2 threshold* (`okay_nabu` slot), from 0.50 to 0.99. On
+  first boot they start at each model's default cutoff. This makes a custom
+  wake word model tunable without editing the firmware.
+- **Opt-in deep sleep** on a long press of the BOOT button (GPIO0), behind the
+  `enable_deep_sleep` substitution (off by default).
+
+### Changed
+- **Wake word sensitivity presets are relative to each model's default
+  cutoff** instead of fixed values tuned for the stock models, so they stay
+  sensible after swapping a model. *Moderately sensitive* is the default minus
+  0.16, *Very sensitive* the default minus 0.29. With the stock `alexa` model,
+  *Very sensitive* is now 0.61 instead of 0.50 (`okay_nabu` is effectively
+  unchanged).
+- **The Restart button is enabled by default** in Home Assistant. On a device
+  that was already added to Home Assistant the entity stays disabled, because
+  Home Assistant remembers the earlier default; enable it once from the device
+  page.
+- **Minimum ESPHome version is now 2026.8.0.** The LED ring uses
+  `channel_colors` in place of `rgb_order`, which ESPHome deprecated and will
+  remove in 2027.3.0.
+- **Mic gain slider moves in 3 dB steps, 0 to 36 dB** (was 1.5 dB steps up to
+  37.5 dB). The ES7210 gain register only has 3 dB resolution below 33 dB, so
+  every second slider position did nothing. A saved off-grid value keeps
+  working until the slider is next moved.
+- **Wake word sensitivity presets apply to every wake word model**, not only
+  `alexa` and `okay_nabu`.
+
 ## [1.0.1] - 2026-09-20
 
 Patch release fixing the mic gain control. Tagged `v1.0.1`; the example config

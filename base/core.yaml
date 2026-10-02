@@ -56,6 +56,13 @@ substitutions:
   # ---------------------------------------------------------------------------
   hidden_ssid: 'false'      # true = fast_connect, required for a hidden SSID
 
+  # Software off: long-press the onboard BOOT button (GPIO0) for ~2 s to enter
+  # deep sleep; a short press wakes the board again. Off by default - set to
+  # 'true' in your thin config to enable it. Note the savings on this board are
+  # modest: the ES8311/ES7210 codecs and the LED strip stay powered (no hardware
+  # shutdown line), so this is closer to a low-power idle than a true power off.
+  enable_deep_sleep: 'false'
+
   # Media player volume clamps (the onboard amp distorts near the top).
   volume_min: '0.4'
   volume_max: '0.8'
@@ -74,7 +81,7 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2025.8.0
+  min_version: 2026.8.0     # esp32_rmt_led_strip channel_colors
   on_boot:
     # Publish a "no timer" placeholder and paint the ring as early as we can, so
     # the device shows life while Wi-Fi/API are still coming up.
@@ -109,6 +116,23 @@ esphome:
         # in HA while the hardware sat at the default.
         - lambda: |-
             id(adc_mic).set_mic_gain(id(mic_gain_db).state);
+            ESP_LOGI("mic", "[MIC] restored ES7210 gain -> %.1f dB", id(mic_gain_db).state);
+        # First boot only: start the wake word threshold sliders at the models'
+        # own default cutoffs (manifest or YAML), not at the fixed initial_value.
+        - if:
+            condition:
+              lambda: return !id(wake_word_thresholds_seeded);
+            then:
+              - number.set:
+                  id: wake_word_1_threshold
+                  value: !lambda return clamp(roundf(id(alexa).get_default_probability_cutoff() / 2.55f) / 100.0f, 0.5f, 0.99f);
+              - number.set:
+                  id: wake_word_2_threshold
+                  value: !lambda return clamp(roundf(id(okay_nabu).get_default_probability_cutoff() / 2.55f) / 100.0f, 0.5f, 0.99f);
+              - lambda: id(wake_word_thresholds_seeded) = true;
+        # Apply the wake word cutoffs once the select and both sliders hold
+        # their restored values (their own on_value may fire before that).
+        - script.execute: apply_wake_word_sensitivity
         # Diagnostics: an explicit OFF switch that silences the mic completely.
         # ON = microphone disabled. (This used to be inverted, so the mic was
         # stopped on every boot with the switch in its default OFF position.)
@@ -209,6 +233,19 @@ ota:
   - platform: esphome
     id: ota_esphome
 
+# Software off. No run_duration / sleep_duration, so the node never sleeps on
+# its own: the only path in is the BOOT-button long-press below, which calls
+# deep_sleep.enter only when ${enable_deep_sleep} is 'true'. Wake is a low level
+# on GPIO0 (BOOT pressed). GPIO0 is a strapping pin - holding BOOT through a
+# power cycle still drops the chip into the serial bootloader, unavoidably.
+deep_sleep:
+  id: deep_sleep_ctrl
+  wakeup_pin:
+    number: GPIO0
+    inverted: true            # BOOT is active-low; wake when it is pulled low
+    allow_other_uses: true    # GPIO0 is also the boot_button binary_sensor
+  wakeup_pin_mode: INVERT_WAKEUP   # BOOT still held at sleep time -> flip, don't loop
+
 i2c:
   - id: internal_i2c
     sda: ${i2c_sda}
@@ -266,8 +303,8 @@ audio_adc:
   - platform: es7210
     id: adc_mic
     i2c_id: internal_i2c
-    # Runtime gain lives on the `mic_gain_db` number below. The ES7210 caps at
-    # 37.5 dB; higher values are silently clamped by the driver.
+    # Runtime gain lives on the `mic_gain_db` number below (3 dB steps, the
+    # resolution of the ES7210 gain register).
     mic_gain: 24db
 
 audio_dac:
@@ -391,6 +428,10 @@ media_player:
       - id: boot_sound_custom
         file: ${boot_sound_file}
 
+# Home Assistant picks the active wake word: the device page shows a "Wake word"
+# select listing every model below. The first
+# model is the default on a fresh flash; the choice is then kept in flash. Models
+# that are not selected are not loaded, so the extra ones cost flash, not RAM.
 micro_wake_word:
   id: mww
   microphone: i2s_mics
@@ -400,6 +441,10 @@ micro_wake_word:
       id: alexa
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/okay_nabu.json
       id: okay_nabu
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/hey_jarvis.json
+      id: hey_jarvis
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/hey_mycroft.json
+      id: hey_mycroft
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
@@ -433,7 +478,9 @@ micro_wake_word:
                           else:
                             - if:
                                 condition:
-                                  switch.is_on: wake_sound
+                                  and:
+                                    - switch.is_on: wake_sound
+                                    - switch.is_off: night_mode   # the ring is enough at night
                                 then:
                                   - script.execute:
                                       id: play_sound
@@ -477,6 +524,7 @@ voice_assistant:
         condition:
           - lambda: 'return !id(boot_chime_done);'
           - switch.is_on: boot_sound
+          - switch.is_off: night_mode
           - switch.is_off: diag_disable_mic
         then:
           - lambda: id(boot_chime_done) = true;
@@ -612,7 +660,7 @@ light:
     pin: ${led_pin}
     num_leds: ${led_num}
     chipset: WS2812
-    rgb_order: RGB
+    channel_colors: RGB
     default_transition_length: 150ms
     effects:
       # update_interval must be LONGER than transition_length: it is how often
@@ -734,10 +782,22 @@ globals:
     type: float
     restore_value: no
     initial_value: '1.0'
+  # Ring brightness for the current paint: the day slider, or the night one
+  # while Night mode is on. Set by led_set_effect alongside the colour.
+  - id: led_ring_level
+    type: float
+    restore_value: no
+    initial_value: '0.8'
   - id: init_in_progress
     type: bool
     restore_value: no
     initial_value: 'true'
+  # Set once the wake word threshold sliders have been seeded from the models'
+  # default cutoffs, so later boots keep whatever the user dialled in.
+  - id: wake_word_thresholds_seeded
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
   - id: improv_ble_in_progress
     type: bool
     restore_value: no
@@ -770,6 +830,39 @@ globals:
     restore_value: no
 
 script:
+  # Push the wake word cutoffs for the current "Wake word sensitivity" option.
+  # Cutoffs are quantised uint8 (255 = 1.0). The preset offsets follow the
+  # okay_nabu figures measured on the Dinner Party Corpus: 0.85 -> 0.000 FAPH,
+  # 0.69 -> 0.376 FAPH, 0.56 -> 0.751 FAPH (FAPH = false accepts per hour).
+  - id: apply_wake_word_sensitivity
+    mode: restart
+    then:
+      - lambda: |-
+          std::string opt = id(wake_word_sensitivity).current_option();
+          auto to_cutoff = [](float p) -> uint8_t {
+            return (uint8_t) roundf(std::min(std::max(p, 0.0f), 1.0f) * 255.0f);
+          };
+          auto preset = [&](micro_wake_word::WakeWordModel *m, int offset) {
+            m->set_probability_cutoff((uint8_t) std::max(64, (int) m->get_default_probability_cutoff() - offset));
+          };
+          if (opt == "Custom") {
+            // Sliders not published yet (early in setup): on_boot re-runs this.
+            float t1 = id(wake_word_1_threshold).state;
+            float t2 = id(wake_word_2_threshold).state;
+            if (std::isnan(t1) || std::isnan(t2)) return;
+            // Models without a slider stay at their own default cutoff.
+            for (auto *m : id(mww).get_wake_words()) preset(m, 0);
+            id(alexa).set_probability_cutoff(to_cutoff(t1));
+            id(okay_nabu).set_probability_cutoff(to_cutoff(t2));
+          } else {
+            int offset = 0;                                   // Slightly: model default
+            if (opt == "Moderately sensitive") offset = 40;   // about -0.16
+            else if (opt == "Very sensitive") offset = 75;    // about -0.29
+            for (auto *m : id(mww).get_wake_words()) preset(m, offset);
+          }
+          ESP_LOGI("wake_word", "Sensitivity '%s': cutoffs %u / %u", opt.c_str(),
+                   id(alexa).get_probability_cutoff(), id(okay_nabu).get_probability_cutoff());
+
   - id: flash_ring
     then:
       - light.turn_on: { id: status_ring, red: 1.0, green: 0.0, blue: 0.0, brightness: 100%, effect: "None" }
@@ -788,11 +881,17 @@ script:
       b: float
     then:
       - lambda: |-
-          id(led_ring_color_r) = r;
-          id(led_ring_color_g) = g;
-          id(led_ring_color_b) = b;
-          ESP_LOGI("led", "led_set_effect: effect='%s' rgb(%.2f, %.2f, %.2f) brightness=%.2f",
-                   effect.c_str(), r, g, b, (float) id(led_ring_brightness).state);
+          const bool night = id(night_mode).state;
+          const float level = night ? id(night_led_brightness).state : id(led_ring_brightness).state;
+          // The pulse effects drive brightness themselves (30..100%) and ignore
+          // the level, so at night they are dimmed through the colour instead.
+          const float k = (night && effect.rfind("Pulse", 0) == 0) ? level : 1.0f;
+          id(led_ring_color_r) = r * k;
+          id(led_ring_color_g) = g * k;
+          id(led_ring_color_b) = b * k;
+          id(led_ring_level) = level;
+          ESP_LOGI("led", "led_set_effect: effect='%s' rgb(%.2f, %.2f, %.2f) brightness=%.2f night=%d",
+                   effect.c_str(), r * k, g * k, b * k, level, (int) night);
       - if:
           condition:
             lambda: 'return effect == "off";'
@@ -806,14 +905,14 @@ script:
                   - light.turn_on:
                       id: status_ring
                       effect: "None"    # clear any running effect so solid is steady
-                      brightness: !lambda 'return id(led_ring_brightness).state;'
+                      brightness: !lambda 'return id(led_ring_level);'
                       red: !lambda 'return id(led_ring_color_r);'
                       green: !lambda 'return id(led_ring_color_g);'
                       blue: !lambda 'return id(led_ring_color_b);'
                 else:
                   - light.turn_on:
                       id: status_ring
-                      brightness: !lambda 'return id(led_ring_brightness).state;'
+                      brightness: !lambda 'return id(led_ring_level);'
                       red: !lambda 'return id(led_ring_color_r);'
                       green: !lambda 'return id(led_ring_color_g);'
                       blue: !lambda 'return id(led_ring_color_b);'
@@ -899,7 +998,8 @@ script:
           id: status_ring
           brightness: !lambda 'return id(led_ring_brightness).state;'
           red: 0.0
-          green: 1.0
+          # Pulse Fast sets its own brightness, so Night mode dims the colour.
+          green: !lambda 'return id(night_mode).state ? id(night_led_brightness).state : 1.0f;'
           blue: 0.0
           effect: "Pulse Fast"
       - delay: 1.2s
@@ -1050,7 +1150,12 @@ script:
           }
 
 select:
+  # Presets are relative to each model's own default cutoff (from its manifest,
+  # or `probability_cutoff:` in YAML), so they stay sensible when a model is
+  # swapped for a custom one. "Custom" uses the two threshold sliders instead.
+  # The cutoffs are applied by apply_wake_word_sensitivity.
   - platform: template
+    id: wake_word_sensitivity
     name: "Wake word sensitivity"
     optimistic: true
     initial_option: Slightly sensitive
@@ -1060,21 +1165,9 @@ select:
       - Slightly sensitive
       - Moderately sensitive
       - Very sensitive
-    # Probability cutoffs are quantised uint8 (255 = 1.0); the comment on each
-    # line is the floating point value. FAPH = false accepts per hour measured
-    # against the Dinner Party Corpus. Values apply to the models pinned above.
+      - Custom
     on_value:
-      - lambda: |-
-          if (x == "Slightly sensitive") {
-            id(alexa).set_probability_cutoff(230);        // 0.90
-            id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH (manifest default)
-          } else if (x == "Moderately sensitive") {
-            id(alexa).set_probability_cutoff(191);        // 0.75
-            id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH
-          } else if (x == "Very sensitive") {
-            id(alexa).set_probability_cutoff(128);        // 0.50
-            id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH
-          }
+      - script.execute: apply_wake_word_sensitivity
 
   # Pick the ring animation for each voice-assistant phase, from HA, live.
   # The option strings must match effect names in the light's `effects:` block
@@ -1238,6 +1331,20 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
 
+  # Night mode: the ring uses "Night LED Ring Brightness" and the wake sound and
+  # boot chime are skipped. Replies, timers and the alarm still play. Flip it
+  # from a Home Assistant automation (sunset/sunrise, a bedtime scene, ...).
+  - platform: template
+    id: night_mode
+    name: Night mode
+    icon: "mdi:weather-night"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    # Also fires during the restore in setup(), hence the init_in_progress gate.
+    on_turn_on: *repaint_if_ready
+    on_turn_off: *repaint_if_ready
+
   - platform: template
     id: timer_ringing
     optimistic: true
@@ -1286,8 +1393,11 @@ number:
     entity_category: config
     unit_of_measurement: dB
     min_value: 0
-    max_value: 37.5           # ES7210 hardware ceiling - the driver clamps above this
-    step: 1.5
+    # The ES7210 gain register moves in 3 dB steps up to 33 dB (then 34.5, 36
+    # and 37.5), so a finer slider step would leave every second position a
+    # no-op. 36 dB is the highest value that sits on the 3 dB grid.
+    max_value: 36
+    step: 3
     restore_value: true
     initial_value: 24
     mode: slider
@@ -1304,6 +1414,40 @@ number:
           format: "[MIC] ES7210 gain -> %.1f dB"
           args: ["x"]
 
+  # Per-model detection thresholds, used when "Wake word sensitivity" is set to
+  # "Custom". Wake word 1 = the `alexa` model slot, 2 = the `okay_nabu` slot.
+  # The other models keep their default cutoff in "Custom".
+  # On first boot they are seeded from the models' default cutoffs (on_boot).
+  - platform: template
+    id: wake_word_1_threshold
+    name: "Wake word 1 threshold"
+    icon: mdi:tune-vertical
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.5
+    max_value: 0.99
+    step: 0.01
+    initial_value: 0.9
+    mode: slider
+    on_value:
+      - script.execute: apply_wake_word_sensitivity
+
+  - platform: template
+    id: wake_word_2_threshold
+    name: "Wake word 2 threshold"
+    icon: mdi:tune-vertical
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.5
+    max_value: 0.99
+    step: 0.01
+    initial_value: 0.85
+    mode: slider
+    on_value:
+      - script.execute: apply_wake_word_sensitivity
+
   - platform: template
     id: led_ring_brightness
     name: "LED Ring Brightness"
@@ -1319,11 +1463,29 @@ number:
     on_value:
       - if:
           condition:
-            light.is_on: status_ring
+            and:
+              - light.is_on: status_ring
+              - switch.is_off: night_mode   # Night mode has its own brightness
           then:
             - light.turn_on:
                 id: status_ring
                 brightness: !lambda 'return x;'
+
+  # Ring brightness while Night mode is on. The floor is where the WS2812s are
+  # still visibly lit after gamma correction.
+  - platform: template
+    id: night_led_brightness
+    name: "Night LED Ring Brightness"
+    icon: mdi:brightness-4
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.2
+    max_value: 1.0
+    step: 0.05
+    initial_value: 0.3
+    mode: slider
+    on_value: *repaint_if_ready
 
 sensor:
   - platform: template
@@ -1361,7 +1523,6 @@ button:
     id: restart_button
     name: "Restart"
     entity_category: config
-    disabled_by_default: true
     icon: "mdi:restart"
 
 binary_sensor:
@@ -1391,3 +1552,31 @@ binary_sensor:
       inverted: true
     on_press:
       - media_player.volume_up: external_media_player
+
+  # Onboard BOOT button (GPIO0, a strapping pin, direct - not via the expander).
+  # Held for 2 to 10 s it enters deep sleep, but only when ${enable_deep_sleep}
+  # is 'true'; otherwise the long-press does nothing. A short press wakes the
+  # board from deep sleep (handled by the deep_sleep wakeup_pin, not this
+  # sensor). Disabled in HA by default - it exists here for the sleep gesture.
+  - platform: gpio
+    id: boot_button
+    name: "BOOT button"
+    entity_category: diagnostic
+    disabled_by_default: true
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+      allow_other_uses: true
+    on_click:
+      min_length: 2s
+      max_length: 10s
+      then:
+        - if:
+            condition:
+              lambda: 'return strcmp("${enable_deep_sleep}", "true") == 0;'
+            then:
+              - logger.log: "BOOT long-press: entering deep sleep"
+              - deep_sleep.enter: deep_sleep_ctrl

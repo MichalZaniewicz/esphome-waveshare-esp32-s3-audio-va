@@ -1,0 +1,51 @@
+name: Build firmware
+
+# Compiles base/core.yaml with the latest ESPHome release, so C++ and component
+# schema errors show up on the push instead of at flash time.
+
+on:
+  push:
+    branches: [main, beta]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "skill/**"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "skill/**"
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install esphome pyyaml
+
+      - name: Offline validation
+        run: python scripts/validate.py base/core.yaml
+
+      - name: Placeholder secrets
+        run: cp secrets.example.yaml ci/secrets.yaml
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: platformio-${{ runner.os }}-${{ hashFiles('base/core.yaml') }}
+          restore-keys: platformio-${{ runner.os }}-
+
+      - name: Compile
+        run: esphome compile ci/build.yaml
