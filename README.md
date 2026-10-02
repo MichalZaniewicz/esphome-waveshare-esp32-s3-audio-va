@@ -23,7 +23,7 @@ which silently removes any <img> placed inside it. -->
   <video src="https://github.com/user-attachments/assets/0eae0230-de47-4f20-a6ea-47f65af35f86" controls width="400"></video>
 </div>
 
-> **Status: stable (v1.0.1).** Wake word, STT/TTS, clean playback and the LED
+> **Status: stable (v1.1.0).** Wake word, STT/TTS, clean playback and the LED
 > ring are confirmed on-device. Full docs are in the
 > [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki);
 > the release history is in [CHANGELOG.md](CHANGELOG.md).
@@ -82,7 +82,7 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 5. Say "Alexa". The ring should go violet. To use another wake word, change
    **Wake word** on the device page (see [Wake words](#wake-words)).
 
-The example config pins the `v1.0.1` release tag, so a build is reproducible. To
+The example config pins the `v1.1.0` release tag, so a build is reproducible. To
 move to a newer release, bump `ref:` in the `packages:` block to a later tag (or
 `main` to track the latest), then `esphome clean waveshare-va.yaml` (clears the
 package cache) and `esphome run waveshare-va.yaml`.

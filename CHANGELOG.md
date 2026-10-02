@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-10-02
+
+Feature release: more wake words, a night mode, tunable wake word thresholds
+and a CI build. Tagged `v1.1.0`; the example config now pins this tag. Requires
+ESPHome 2026.8.0 or newer.
 
 ### Added
 - **Two more wake words: Hey Jarvis and Hey Mycroft**, next to Alexa and Okay
@@ -32,7 +36,10 @@
   0.16, *Very sensitive* the default minus 0.29. With the stock `alexa` model,
   *Very sensitive* is now 0.61 instead of 0.50 (`okay_nabu` is effectively
   unchanged).
-- **The Restart button is enabled by default** in Home Assistant.
+- **The Restart button is enabled by default** in Home Assistant. On a device
+  that was already added to Home Assistant the entity stays disabled, because
+  Home Assistant remembers the earlier default; enable it once from the device
+  page.
 - **Minimum ESPHome version is now 2026.8.0.** The LED ring uses
   `channel_colors` in place of `rgb_order`, which ESPHome deprecated and will
   remove in 2027.3.0.
