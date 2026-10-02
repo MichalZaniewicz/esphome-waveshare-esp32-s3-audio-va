@@ -8,6 +8,17 @@ the little AI smart-speaker devkit with a dual-mic array, an ES8311 codec, three
 buttons and a 7-LED RGB ring. Pure ESPHome, no custom C firmware: an always-on
 core you pull as a package, plus one thin config file you actually edit.
 
+> [!TIP]
+> ⭐ **Enjoying this project?** Every star is real motivation to keep it going.
+>
+> ☕ Want to say thanks another way? You can [buy me a coffee](https://buymeacoffee.com/zanula).
+
+<!-- The badges live OUTSIDE the alert on purpose: Home Assistant rewrites a
+GitHub alert into <ha-alert> and drops every child whose textContent is empty,
+which silently removes any <img> placed inside it. -->
+
+[![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=for-the-badge&logo=github&label=STAR%20THIS%20REPO&labelColor=555555&color=ffc107)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va) [![Buy me a coffee](https://img.shields.io/badge/BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/zanula)
+
 <div align="center">
   <video src="https://github.com/user-attachments/assets/0eae0230-de47-4f20-a6ea-47f65af35f86" controls width="400"></video>
 </div>
@@ -21,11 +32,6 @@ core you pull as a package, plus one thin config file you actually edit.
 You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
          (wake word + audio)      (STT / LLM / TTS)
 ```
-
-> [!TIP]
-> ⭐ **Enjoying this project?** Every star is real motivation to keep it going.
->
-> [![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=social)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va)
 
 ## What it does
 
