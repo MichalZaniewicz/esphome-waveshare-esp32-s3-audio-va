@@ -116,6 +116,7 @@ esphome:
         # in HA while the hardware sat at the default.
         - lambda: |-
             id(adc_mic).set_mic_gain(id(mic_gain_db).state);
+            ESP_LOGI("mic", "[MIC] restored ES7210 gain -> %.1f dB", id(mic_gain_db).state);
         # First boot only: start the wake word threshold sliders at the models'
         # own default cutoffs (manifest or YAML), not at the fixed initial_value.
         - if:
@@ -302,8 +303,8 @@ audio_adc:
   - platform: es7210
     id: adc_mic
     i2c_id: internal_i2c
-    # Runtime gain lives on the `mic_gain_db` number below. The ES7210 caps at
-    # 37.5 dB; higher values are silently clamped by the driver.
+    # Runtime gain lives on the `mic_gain_db` number below (3 dB steps, the
+    # resolution of the ES7210 gain register).
     mic_gain: 24db
 
 audio_dac:
@@ -427,6 +428,10 @@ media_player:
       - id: boot_sound_custom
         file: ${boot_sound_file}
 
+# Home Assistant picks the active wake word: the device page shows a "Wake word"
+# select listing every model below. The first
+# model is the default on a fresh flash; the choice is then kept in flash. Models
+# that are not selected are not loaded, so the extra ones cost flash, not RAM.
 micro_wake_word:
   id: mww
   microphone: i2s_mics
@@ -436,6 +441,10 @@ micro_wake_word:
       id: alexa
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/okay_nabu.json
       id: okay_nabu
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/hey_jarvis.json
+      id: hey_jarvis
+    - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/hey_mycroft.json
+      id: hey_mycroft
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
@@ -469,7 +478,9 @@ micro_wake_word:
                           else:
                             - if:
                                 condition:
-                                  switch.is_on: wake_sound
+                                  and:
+                                    - switch.is_on: wake_sound
+                                    - switch.is_off: night_mode   # the ring is enough at night
                                 then:
                                   - script.execute:
                                       id: play_sound
@@ -513,6 +524,7 @@ voice_assistant:
         condition:
           - lambda: 'return !id(boot_chime_done);'
           - switch.is_on: boot_sound
+          - switch.is_off: night_mode
           - switch.is_off: diag_disable_mic
         then:
           - lambda: id(boot_chime_done) = true;
@@ -770,6 +782,12 @@ globals:
     type: float
     restore_value: no
     initial_value: '1.0'
+  # Ring brightness for the current paint: the day slider, or the night one
+  # while Night mode is on. Set by led_set_effect alongside the colour.
+  - id: led_ring_level
+    type: float
+    restore_value: no
+    initial_value: '0.8'
   - id: init_in_progress
     type: bool
     restore_value: no
@@ -832,14 +850,15 @@ script:
             float t1 = id(wake_word_1_threshold).state;
             float t2 = id(wake_word_2_threshold).state;
             if (std::isnan(t1) || std::isnan(t2)) return;
+            // Models without a slider stay at their own default cutoff.
+            for (auto *m : id(mww).get_wake_words()) preset(m, 0);
             id(alexa).set_probability_cutoff(to_cutoff(t1));
             id(okay_nabu).set_probability_cutoff(to_cutoff(t2));
           } else {
             int offset = 0;                                   // Slightly: model default
             if (opt == "Moderately sensitive") offset = 40;   // about -0.16
             else if (opt == "Very sensitive") offset = 75;    // about -0.29
-            preset(id(alexa), offset);
-            preset(id(okay_nabu), offset);
+            for (auto *m : id(mww).get_wake_words()) preset(m, offset);
           }
           ESP_LOGI("wake_word", "Sensitivity '%s': cutoffs %u / %u", opt.c_str(),
                    id(alexa).get_probability_cutoff(), id(okay_nabu).get_probability_cutoff());
@@ -862,11 +881,17 @@ script:
       b: float
     then:
       - lambda: |-
-          id(led_ring_color_r) = r;
-          id(led_ring_color_g) = g;
-          id(led_ring_color_b) = b;
-          ESP_LOGI("led", "led_set_effect: effect='%s' rgb(%.2f, %.2f, %.2f) brightness=%.2f",
-                   effect.c_str(), r, g, b, (float) id(led_ring_brightness).state);
+          const bool night = id(night_mode).state;
+          const float level = night ? id(night_led_brightness).state : id(led_ring_brightness).state;
+          // The pulse effects drive brightness themselves (30..100%) and ignore
+          // the level, so at night they are dimmed through the colour instead.
+          const float k = (night && effect.rfind("Pulse", 0) == 0) ? level : 1.0f;
+          id(led_ring_color_r) = r * k;
+          id(led_ring_color_g) = g * k;
+          id(led_ring_color_b) = b * k;
+          id(led_ring_level) = level;
+          ESP_LOGI("led", "led_set_effect: effect='%s' rgb(%.2f, %.2f, %.2f) brightness=%.2f night=%d",
+                   effect.c_str(), r * k, g * k, b * k, level, (int) night);
       - if:
           condition:
             lambda: 'return effect == "off";'
@@ -880,14 +905,14 @@ script:
                   - light.turn_on:
                       id: status_ring
                       effect: "None"    # clear any running effect so solid is steady
-                      brightness: !lambda 'return id(led_ring_brightness).state;'
+                      brightness: !lambda 'return id(led_ring_level);'
                       red: !lambda 'return id(led_ring_color_r);'
                       green: !lambda 'return id(led_ring_color_g);'
                       blue: !lambda 'return id(led_ring_color_b);'
                 else:
                   - light.turn_on:
                       id: status_ring
-                      brightness: !lambda 'return id(led_ring_brightness).state;'
+                      brightness: !lambda 'return id(led_ring_level);'
                       red: !lambda 'return id(led_ring_color_r);'
                       green: !lambda 'return id(led_ring_color_g);'
                       blue: !lambda 'return id(led_ring_color_b);'
@@ -973,7 +998,8 @@ script:
           id: status_ring
           brightness: !lambda 'return id(led_ring_brightness).state;'
           red: 0.0
-          green: 1.0
+          # Pulse Fast sets its own brightness, so Night mode dims the colour.
+          green: !lambda 'return id(night_mode).state ? id(night_led_brightness).state : 1.0f;'
           blue: 0.0
           effect: "Pulse Fast"
       - delay: 1.2s
@@ -1305,6 +1331,20 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
 
+  # Night mode: the ring uses "Night LED Ring Brightness" and the wake sound and
+  # boot chime are skipped. Replies, timers and the alarm still play. Flip it
+  # from a Home Assistant automation (sunset/sunrise, a bedtime scene, ...).
+  - platform: template
+    id: night_mode
+    name: Night mode
+    icon: "mdi:weather-night"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    # Also fires during the restore in setup(), hence the init_in_progress gate.
+    on_turn_on: *repaint_if_ready
+    on_turn_off: *repaint_if_ready
+
   - platform: template
     id: timer_ringing
     optimistic: true
@@ -1353,8 +1393,11 @@ number:
     entity_category: config
     unit_of_measurement: dB
     min_value: 0
-    max_value: 37.5           # ES7210 hardware ceiling - the driver clamps above this
-    step: 1.5
+    # The ES7210 gain register moves in 3 dB steps up to 33 dB (then 34.5, 36
+    # and 37.5), so a finer slider step would leave every second position a
+    # no-op. 36 dB is the highest value that sits on the 3 dB grid.
+    max_value: 36
+    step: 3
     restore_value: true
     initial_value: 24
     mode: slider
@@ -1373,6 +1416,7 @@ number:
 
   # Per-model detection thresholds, used when "Wake word sensitivity" is set to
   # "Custom". Wake word 1 = the `alexa` model slot, 2 = the `okay_nabu` slot.
+  # The other models keep their default cutoff in "Custom".
   # On first boot they are seeded from the models' default cutoffs (on_boot).
   - platform: template
     id: wake_word_1_threshold
@@ -1419,11 +1463,29 @@ number:
     on_value:
       - if:
           condition:
-            light.is_on: status_ring
+            and:
+              - light.is_on: status_ring
+              - switch.is_off: night_mode   # Night mode has its own brightness
           then:
             - light.turn_on:
                 id: status_ring
                 brightness: !lambda 'return x;'
+
+  # Ring brightness while Night mode is on. The floor is where the WS2812s are
+  # still visibly lit after gamma correction.
+  - platform: template
+    id: night_led_brightness
+    name: "Night LED Ring Brightness"
+    icon: mdi:brightness-4
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 0.2
+    max_value: 1.0
+    step: 0.05
+    initial_value: 0.3
+    mode: slider
+    on_value: *repaint_if_ready
 
 sensor:
   - platform: template
