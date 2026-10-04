@@ -967,9 +967,9 @@ script:
           }
 
           switch (phase) {
+            // Both halves of listening (awake, then speech detected) use the
+            // Listening effect, so the chosen animation shows from the wake word on.
             case ${voice_assist_waiting_for_command_phase_id}:
-              set("solid", 0.5, 0.0, 0.5);           // calm violet: I'm awake
-              return;
             case ${voice_assist_listening_for_command_phase_id}:
               set(id(listening_effect).current_option(), 0.8, 0.0, 0.8);
               return;
