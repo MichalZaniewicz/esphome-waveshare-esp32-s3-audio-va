@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **Play/Pause silences a ringing timer or alarm.** While a timer or alarm is
+  ringing, the Play/Pause key stops it instead of toggling playback. It works
+  even with the microphone muted, when the wake word cannot be used. The rest
+  of the time the key still does play/pause.
+
 ## [1.1.1] - 2026-10-02
 
 Tagged `v1.1.1`; the example config now pins this tag.

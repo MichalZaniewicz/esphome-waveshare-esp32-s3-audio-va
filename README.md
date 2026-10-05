@@ -50,8 +50,11 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   replying phases are pickable from HA: solid plus 14 animations - pulses,
   breathe, wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
 - **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
-  in HA. (A daily-alarm engine is present but its entities are hidden by default.)
+  in HA. A ringing timer or alarm is silenced by saying the wake word or by
+  pressing Play/Pause. (A daily-alarm engine is present but its entities are
+  hidden by default.)
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
+  While a timer or alarm is ringing, Play/Pause silences it instead.
 - **Boot chime**: a short "ready" sound once the device connects to HA
   (toggleable, and it also settles the amp so the ring boots silent).
 - **Night mode**: one switch dims the ring to its own brightness and skips the

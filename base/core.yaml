@@ -1531,7 +1531,14 @@ binary_sensor:
       number: ${key2_exio}
       inverted: true
     on_press:
-      - media_player.toggle: external_media_player
+      # A timer or alarm is ringing -> Play/Pause silences it instead.
+      - if:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            - switch.turn_off: timer_ringing
+          else:
+            - media_player.toggle: external_media_player
 
   - platform: gpio
     name: "Key3"
