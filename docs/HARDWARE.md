@@ -87,7 +87,7 @@ none.
 | 7 | USB/camera mux | **do not drive** |
 | **8** | **PA_EN, amplifier enable, ACTIVE HIGH** | ✅ `amp_enable` |
 | **9** | **Key1, active low** | ✅ volume down |
-| **10** | **Key2, active low** | ✅ play/pause |
+| **10** | **Key2, active low** | ✅ play/pause (silences a ringing timer/alarm) |
 | **11** | **Key3, active low** | ✅ volume up |
 | 12-15 | expansion header P1 | - |
 
