@@ -988,7 +988,9 @@ script:
             default: break;
           }
 
-          if (timers_active) {                       // a timer is counting down
+          // A timer is counting down. "Timer countdown on ring" turns this off,
+          // so the ring stays dark (e.g. a nap timer in a dark room).
+          if (timers_active && id(timer_countdown_ring).state) {
             set("Pulse Slow", 0.6, 0.0, 0.6);
             return;
           }
@@ -1346,6 +1348,19 @@ switch:
     entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
+    # Also fires during the restore in setup(), hence the init_in_progress gate.
+    on_turn_on: *repaint_if_ready
+    on_turn_off: *repaint_if_ready
+
+  # Pulse the ring while a timer counts down. Off keeps the ring dark during
+  # the countdown; it still lights when the timer rings and during a reply.
+  - platform: template
+    id: timer_countdown_ring
+    name: Timer countdown on ring
+    icon: "mdi:timer-sand"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
     # Also fires during the restore in setup(), hence the init_in_progress gate.
     on_turn_on: *repaint_if_ready
     on_turn_off: *repaint_if_ready

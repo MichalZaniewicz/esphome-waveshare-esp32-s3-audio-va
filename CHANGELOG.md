@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- **Timer countdown on ring** switch (config). Turn it off to keep the ring
+  dark while a timer counts down, e.g. for a nap timer in a dark room. The
+  ring still lights when the timer rings and during a voice interaction.
+  Defaults to on, so nothing changes until you flip it (#8).
+
 ### Changed
 - **Play/Pause silences a ringing timer or alarm.** While a timer or alarm is
   ringing, the Play/Pause key stops it instead of toggling playback. It works
