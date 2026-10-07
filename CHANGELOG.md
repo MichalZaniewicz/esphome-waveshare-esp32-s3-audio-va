@@ -1,14 +1,24 @@
 # Changelog
 
-## [Unreleased]
+## [1.2.0] - 2026-10-07
+
+**Switch your config to `ref: main`.** The example config now uses
+`ref: main`, so every rebuild picks up the latest changes. If your
+`waveshare-va.yaml` still has `ref: v1.1.1` (or older) in the `packages:` block,
+change it to `ref: main` once, then `esphome clean` and rebuild.
 
 ### Added
+- **Static IP example** at the bottom of `waveshare-va.yaml`: a commented-out
+  `wifi: manual_ip:` and `mdns: disabled:` block. Your own `wifi:` keys are
+  merged into the core config, so OTA and logs use the IP instead of
+  `<name>.local` (#9).
 - **Timer countdown on ring** switch (config). Turn it off to keep the ring
   dark while a timer counts down, e.g. for a nap timer in a dark room. The
   ring still lights when the timer rings and during a voice interaction.
   Defaults to on, so nothing changes until you flip it (#8).
 
 ### Changed
+- **Example config tracks `main`** instead of a pinned tag.
 - **Play/Pause silences a ringing timer or alarm.** While a timer or alarm is
   ringing, the Play/Pause key stops it instead of toggling playback. It works
   even with the microphone muted, when the wake word cannot be used. The rest
