@@ -85,10 +85,9 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
 5. Say "Alexa". The ring should go violet. To use another wake word, change
    **Wake word** on the device page (see [Wake words](#wake-words)).
 
-The example config pins the `v1.1.1` release tag, so a build is reproducible. To
-move to a newer release, bump `ref:` in the `packages:` block to a later tag (or
-`main` to track the latest), then `esphome clean waveshare-va.yaml` (clears the
-package cache) and `esphome run waveshare-va.yaml`.
+The example config tracks `main`, so every build gets the latest version. To
+update, run `esphome clean waveshare-va.yaml` (clears the package cache) and
+`esphome run waveshare-va.yaml`.
 
 ## Documentation
 
