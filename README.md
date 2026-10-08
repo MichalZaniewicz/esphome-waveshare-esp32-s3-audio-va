@@ -19,9 +19,7 @@ which silently removes any <img> placed inside it. -->
 
 [![Star this repo](https://img.shields.io/github/stars/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va?style=for-the-badge&logo=github&label=STAR%20THIS%20REPO&labelColor=555555&color=ffc107)](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va) [![Buy me a coffee](https://img.shields.io/badge/BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/zanula)
 
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/0eae0230-de47-4f20-a6ea-47f65af35f86" controls width="400"></video>
-</div>
+![Trailer: the voice assistant, the LED ring animations and the Home Assistant controls](docs/trailer.webp)
 
 > **Status: stable (v1.2.0).** Wake word, STT/TTS, clean playback and the LED
 > ring are confirmed on-device. Full docs are in the
