@@ -61,11 +61,9 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   brightness and wake-word sensitivity are all entities, so there's no
   reflashing to tune it.
 
-
-
-https://github.com/user-attachments/assets/45e1fa8d-b2c7-4b63-a9c5-8d9ebbb24940
-
-
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/45e1fa8d-b2c7-4b63-a9c5-8d9ebbb24940" controls width="400"></video>
+</div>
 
 ## Quick start
 
