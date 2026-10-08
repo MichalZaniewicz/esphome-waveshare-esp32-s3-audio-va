@@ -62,7 +62,7 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   reflashing to tune it.
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/8be482f9-d130-452f-961a-fbd5a0c4bc09" controls width="400"></video>
+  <video src="https://github.com/user-attachments/assets/3236cd4f-7184-4eee-a16a-0db6fe1603a3" controls width="400"></video>
 </div>
 
 ## Quick start
