@@ -237,3 +237,5 @@ cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 - **ESPHome**: everything the firmware is built out of.
 - **[Home Assistant Voice PE](https://github.com/esphome/home-assistant-voice-pe)**:
   the sounds, and the phase/ducking model the LED state machine follows.
+- **[clemenszwerg](https://github.com/clemenszwerg)**: diagnosed the ESPHome
+  2026.10 build break and found the `const` fix ([#11](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/issues/11)).

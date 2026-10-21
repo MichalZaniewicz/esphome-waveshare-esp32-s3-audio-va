@@ -1,13 +1,14 @@
 # Changelog
 
-## [Unreleased]
+## [1.2.1] - 2026-10-21
 
 ### Fixed
 - **Builds on ESPHome 2026.10.** ESPHome 2026.10 made audio files `const`,
   which broke the four `play_sound` calls with `invalid conversion from
   'const esphome::audio::AudioFile*'`. The core now compiles on 2026.10 and
   still on 2026.8 and 2026.9. If you added a local `!extend play_sound`
-  workaround, remove it, then `esphome clean` and rebuild (#11).
+  workaround, remove it, then `esphome clean` and rebuild (#11). Thanks to
+  [@clemenszwerg](https://github.com/clemenszwerg) for the report and the fix.
 
 ## [1.2.0] - 2026-10-07
 
