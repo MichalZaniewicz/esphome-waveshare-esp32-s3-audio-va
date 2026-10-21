@@ -1040,10 +1040,14 @@ script:
               .perform();
             id(external_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
 
+  # ESPHome 2026.10 made audio files const; 2026.8/2026.9 still take a mutable
+  # pointer in play_file(). A const parameter accepts both, and the const_cast
+  # below keeps play_file() compiling on either. The type is spelled with
+  # add_const_t because script parameter types may not contain spaces.
   - id: play_sound
     parameters:
       priority: bool
-      sound_file: "audio::AudioFile*"
+      sound_file: "std::add_const_t<audio::AudioFile>*"
     then:
       - lambda: |-
           if (priority) {
@@ -1054,7 +1058,7 @@ script:
               .perform();
           }
           if ((id(external_media_player).state != media_player::MediaPlayerState::MEDIA_PLAYER_STATE_ANNOUNCING) || priority) {
-            id(external_media_player)->play_file(sound_file, true, false);
+            id(external_media_player)->play_file(const_cast<audio::AudioFile *>(sound_file), true, false);
           }
 
   - id: fetch_first_active_timer

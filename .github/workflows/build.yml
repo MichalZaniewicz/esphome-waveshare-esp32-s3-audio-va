@@ -16,11 +16,16 @@ on:
       - "docs/**"
       - "skill/**"
   workflow_dispatch:
+    inputs:
+      esphome_version:
+        description: "ESPHome version to build with (empty = latest release)"
+        required: false
+        default: ""
 
 # A newer push to a pull request supersedes the running build. Branch pushes
 # always run to completion, so a commit never ends up marked as cancelled.
 concurrency:
-  group: build-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  group: build-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}-${{ inputs.esphome_version }}
   cancel-in-progress: true
 
 jobs:
@@ -34,7 +39,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install ESPHome
-        run: pip install esphome pyyaml
+        run: pip install "esphome${{ inputs.esphome_version && format('=={0}', inputs.esphome_version) || '' }}" pyyaml
 
       - name: Offline validation
         run: python scripts/validate.py base/core.yaml
