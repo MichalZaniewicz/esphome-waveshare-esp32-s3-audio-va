@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **Updates no longer need a clean build.** The example config now uses
+  `refresh: 0s`, so every build fetches the latest `main` and a plain
+  **Install** is enough. Before, the package was re-checked only once a day.
+  To get this, change `refresh: 1d` to `refresh: 0s` in your own
+  `waveshare-va.yaml` (#11).
+
 ## [1.2.1] - 2026-10-21
 
 ### Fixed

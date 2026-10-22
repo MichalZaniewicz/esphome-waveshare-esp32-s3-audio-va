@@ -85,9 +85,10 @@ https://github.com/user-attachments/assets/3236cd4f-7184-4eee-a16a-0db6fe1603a3
 5. Say "Alexa". The ring should go violet. To use another wake word, change
    **Wake word** on the device page (see [Wake words](#wake-words)).
 
-The example config tracks `main`, so every build gets the latest version. To
-update, run `esphome clean waveshare-va.yaml` (clears the package cache) and
-`esphome run waveshare-va.yaml`.
+The example config tracks `main` with `refresh: 0s`, so every build fetches the
+latest version. To update, just run `esphome run waveshare-va.yaml` (or
+**Install** in the dashboard). After upgrading ESPHome itself, run
+`esphome clean waveshare-va.yaml` first if the build fails.
 
 ## Documentation
 

@@ -47,7 +47,7 @@ packages:
     ref: main
     files:
       - base/core.yaml
-    refresh: 1d      # re-check main for updates once a day
+    refresh: 0s      # fetch the latest main on every build
 
 # Wi-Fi and the API key come from your local secrets.yaml.
 
