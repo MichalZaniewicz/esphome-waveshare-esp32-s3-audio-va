@@ -220,9 +220,28 @@ esp32:
       CONFIG_COMPILER_OPTIMIZATION_SIZE: "n"
       CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
 
+      # The canceller's DMA, frame buffers and filter state live in internal
+      # RAM; let Wi-Fi and lwIP buffers go to PSRAM so the network stack is not
+      # starved of it (the first alpha build kept dropping API connections).
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+
 psram:
   mode: octal
   speed: 80MHz
+
+# Alpha: memory and main loop health while the canceller runs.
+debug:
+  update_interval: 15s
+
+interval:
+  - interval: 15s
+    then:
+      - lambda: |-
+          ESP_LOGI("mem", "internal free %u, min %u, largest %u | psram free %u",
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                   (unsigned) heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
+                   (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 
 wifi:
   id: wifi_id
@@ -1629,6 +1648,16 @@ sensor:
     accuracy_decimals: 0
     update_interval: 5s
     lambda: return id(aec_meters).get_slot_rms(3);
+  - platform: debug
+    free:
+      name: "Heap free"
+      entity_category: diagnostic
+    block:
+      name: "Heap largest block"
+      entity_category: diagnostic
+    loop_time:
+      name: "Loop time"
+      entity_category: diagnostic
   - platform: template
     name: "AEC reference peak"
     icon: mdi:waveform
