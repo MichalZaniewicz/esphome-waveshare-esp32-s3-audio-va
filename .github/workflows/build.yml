@@ -21,6 +21,10 @@ on:
         description: "ESPHome version to build with (empty = latest release)"
         required: false
         default: ""
+      decode:
+        description: "Crash addresses to resolve with addr2line after the build (space-separated)"
+        required: false
+        default: ""
 
 # A newer push to a pull request supersedes the running build. Branch pushes
 # always run to completion, so a commit never ends up marked as cancelled.
@@ -56,3 +60,12 @@ jobs:
 
       - name: Compile
         run: esphome compile ci/build.yaml
+
+      - name: Decode crash addresses
+        if: ${{ inputs.decode != '' }}
+        run: |
+          elf=$(find .esphome/build -name firmware.elf | head -1)
+          a2l=$(find ~ / -name 'xtensa-esp32s3-elf-addr2line' -o -name 'xtensa-esp-elf-addr2line' 2>/dev/null | head -1)
+          echo "ELF: $elf"
+          echo "addr2line: $a2l"
+          "$a2l" -pfiaC -e "$elf" ${{ inputs.decode }}
