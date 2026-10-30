@@ -10,7 +10,7 @@
   [aec_speexdsp](https://github.com/matt123p/esphome-aec), which uses the
   board's speaker loopback (ES7210 MIC3) as the echo reference and removes the
   device's own playback from the mic. New substitutions `aec_mic_slot`,
-  `aec_ref_slot`, `aec_filter_length`, `aec_playback_gain_db`; new diagnostic
+  `aec_ref_slot`, `aec_frame_size`, `aec_filter_length`, `aec_playback_gain_db`; new diagnostic
   entities "AEC raw slot" and "AEC slot N level" for checking the slot map.
   Playback now runs at 16 kHz end to end. Thanks to
   [@2steuer](https://github.com/2steuer) for pointing to the component (#13).

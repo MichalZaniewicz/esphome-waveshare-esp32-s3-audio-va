@@ -81,10 +81,12 @@ substitutions:
   # select and the "AEC slot N level" sensors (diagnostic entities in HA).
   aec_mic_slot: '0'
   aec_ref_slot: '1'
-  # Echo tail the canceller models, in samples at 16 kHz (1024 = 64 ms). This
-  # is the main CPU cost, and the S3 has less headroom than the ESP32-P4 the
-  # component was developed on.
-  aec_filter_length: '1024'
+  # Canceller size. SpeexDSP puts its state in internal RAM, which the S3 has
+  # little of: frame 256 / filter 1024 took 90 KB and left 10 KB free, and the
+  # board crash-looped. Frame 128 / filter 512 (32 ms echo tail, enough for a
+  # speaker a few cm from the mics) needs about half.
+  aec_frame_size: '128'
+  aec_filter_length: '512'
   # Digital attenuation before the DAC and the reference, so the loopback
   # does not clip. Closer to 0 = louder speaker, but a clipped reference
   # cannot be cancelled.
@@ -377,7 +379,7 @@ aec_speexdsp:
   reference_source: analog_slot
   reference_slot: ${aec_ref_slot}
   tx_slots: [0, 1]
-  frame_size: 256
+  frame_size: ${aec_frame_size}
   filter_length: ${aec_filter_length}
   noise_suppression: true
   noise_suppression_level_db: 10
