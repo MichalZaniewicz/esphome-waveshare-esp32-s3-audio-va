@@ -5,8 +5,8 @@
 ### Added
 - **`mic_channel` substitution** (`right`, the previous behaviour, or `left`)
   picks which of the two onboard mics the firmware listens to. The board has
-  no echo cancellation, so during music the mic hears the speaker loudly; the
-  other capsule may sit better relative to the speaker (#13).
+  no echo cancellation, so during music the mic hears the speaker loudly;
+  whether the other capsule picks up less of it is still being tested (#13).
 
 ### Changed
 - **The timer alarm now pauses 2 s between repeats** (was 0.5 s), so the wake

@@ -74,9 +74,8 @@ substitutions:
   timer_ring_pause_ms: '2000'
 
   # Which ES7210 mic the firmware listens to: 'right' or 'left' (one of the two
-  # onboard capsules each). Worth trying the other one if the wake word
-  # struggles while music plays: the capsules sit at different distances from
-  # the speaker.
+  # onboard capsules each). An experiment for wake word over music: the other
+  # capsule may pick up less of the speaker, or exactly the same.
   mic_channel: right
 
   # Clock timezone in POSIX form - the device has no IANA database. It is only
