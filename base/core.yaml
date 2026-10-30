@@ -67,6 +67,18 @@ substitutions:
   volume_min: '0.4'
   volume_max: '0.8'
 
+  # Silence between repeats of the timer alarm. The board has no echo
+  # cancellation, so while the alarm sound plays the mic mostly hears the
+  # speaker; the wake word (which silences the alarm) is reliably heard in these
+  # gaps. Shorter = more insistent alarm, harder to stop by voice.
+  timer_ring_pause_ms: '2000'
+
+  # Which ES7210 mic the firmware listens to: 'right' or 'left' (one of the two
+  # onboard capsules each). Worth trying the other one if the wake word
+  # struggles while music plays: the capsules sit at different distances from
+  # the speaker.
+  mic_channel: right
+
   # Clock timezone in POSIX form - the device has no IANA database. It is only
   # a fallback: HA's time platform syncs the clock, and the `set_time_zone` API
   # action overwrites this at runtime (persisted). Grab yours from
@@ -331,6 +343,7 @@ microphone:
     # 32-bit frame doubles the bit clock they expect and playback comes out as
     # noise. Matching 16-bit aligns the whole bus (the ES7210 is 16-bit too).
     bits_per_sample: 16bit
+    channel: ${mic_channel}     # i2s_audio's default is right
 
 speaker:
   - platform: i2s_audio
@@ -1028,7 +1041,7 @@ script:
               .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
               .set_announcement(true)
               .perform();
-            id(external_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 500);
+            id(external_media_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, ${timer_ring_pause_ms});
 
   - id: disable_repeat
     then:

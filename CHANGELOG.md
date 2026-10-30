@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+- **`mic_channel` substitution** (`right`, the previous behaviour, or `left`)
+  picks which of the two onboard mics the firmware listens to. The board has
+  no echo cancellation, so during music the mic hears the speaker loudly; the
+  other capsule may sit better relative to the speaker (#13).
+
 ### Changed
+- **The timer alarm now pauses 2 s between repeats** (was 0.5 s), so the wake
+  word can be heard in the gaps and stop it. Tunable with the new
+  `timer_ring_pause_ms` substitution. Key2 also stops a ringing timer (#13).
 - **Updates no longer need a clean build.** The example config now uses
   `refresh: 0s`, so every build fetches the latest `main` and a plain
   **Install** is enough. Before, the package was re-checked only once a day.

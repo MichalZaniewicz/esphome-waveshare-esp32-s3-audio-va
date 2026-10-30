@@ -159,6 +159,8 @@ What lives in `waveshare-va.yaml`:
 | `volume_min` / `volume_max` | `0.4` / `0.8` | Media player clamps, because the onboard amp distorts near the top. |
 | `hidden_ssid` | `false` | `true` enables `fast_connect` for a hidden SSID. |
 | `boot_sound_file` | repo `startup.mp3` | The connect-to-HA chime. Any URL or local MP3/FLAC/WAV. |
+| `timer_ring_pause_ms` | `2000` | Silence between repeats of the timer alarm, so the wake word can stop it. |
+| `mic_channel` | `right` | Which of the two mics to listen to (`right` or `left`). |
 
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
