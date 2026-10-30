@@ -220,11 +220,6 @@ esp32:
       CONFIG_COMPILER_OPTIMIZATION_SIZE: "n"
       CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
 
-      # The canceller's DMA, frame buffers and filter state live in internal
-      # RAM; let Wi-Fi and lwIP buffers go to PSRAM so the network stack is not
-      # starved of it (the first alpha build kept dropping API connections).
-      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
-
 psram:
   mode: octal
   speed: 80MHz
