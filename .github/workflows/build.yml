@@ -64,7 +64,7 @@ jobs:
       - name: Decode crash addresses
         if: ${{ inputs.decode != '' }}
         run: |
-          elf=$(find .esphome/build -name firmware.elf | head -1)
+          elf=$(find . ~/.esphome -name firmware.elf 2>/dev/null | head -1)
           a2l=$(find ~ / -name 'xtensa-esp32s3-elf-addr2line' -o -name 'xtensa-esp-elf-addr2line' 2>/dev/null | head -1)
           echo "ELF: $elf"
           echo "addr2line: $a2l"
