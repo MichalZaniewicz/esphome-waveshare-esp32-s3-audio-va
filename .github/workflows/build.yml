@@ -5,7 +5,7 @@ name: Build firmware
 
 on:
   push:
-    branches: [main, beta]
+    branches: [main, beta, aec]
     paths-ignore:
       - "**.md"
       - "docs/**"

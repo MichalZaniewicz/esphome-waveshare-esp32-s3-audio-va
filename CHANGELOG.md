@@ -3,10 +3,17 @@
 ## [Unreleased]
 
 ### Added
-- **`mic_channel` substitution** (`right`, the previous behaviour, or `left`)
-  picks which of the two onboard mics the firmware listens to. The board has
-  no echo cancellation, so during music the mic hears the speaker loudly;
-  whether the other capsule picks up less of it is still being tested (#13).
+- **Acoustic echo cancellation (alpha, `aec` branch, being tested on
+  hardware).** Meant to let the wake word work while music or an alarm
+  plays. The audio path moves from two
+  `i2s_audio` buses to one full-duplex TDM bus owned by
+  [aec_speexdsp](https://github.com/matt123p/esphome-aec), which uses the
+  board's speaker loopback (ES7210 MIC3) as the echo reference and removes the
+  device's own playback from the mic. New substitutions `aec_mic_slot`,
+  `aec_ref_slot`, `aec_filter_length`, `aec_playback_gain_db`; new diagnostic
+  entities "AEC raw slot" and "AEC slot N level" for checking the slot map.
+  Playback now runs at 16 kHz end to end. Thanks to
+  [@2steuer](https://github.com/2steuer) for pointing to the component (#13).
 
 ### Changed
 - **The timer alarm now pauses 2 s between repeats** (was 0.5 s), so the wake

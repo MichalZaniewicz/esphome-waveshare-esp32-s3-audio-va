@@ -160,7 +160,9 @@ What lives in `waveshare-va.yaml`:
 | `hidden_ssid` | `false` | `true` enables `fast_connect` for a hidden SSID. |
 | `boot_sound_file` | repo `startup.mp3` | The connect-to-HA chime. Any URL or local MP3/FLAC/WAV. |
 | `timer_ring_pause_ms` | `2000` | Silence between repeats of the timer alarm, so the wake word can stop it. |
-| `mic_channel` | `right` | Which of the two mics to listen to (`right` or `left`). |
+| `aec_mic_slot` / `aec_ref_slot` | `0` / `1` | TDM slots of the mic and the speaker loopback used for echo cancellation. |
+| `aec_filter_length` | `1024` | Echo tail the canceller models, in samples at 16 kHz. Main CPU cost. |
+| `aec_playback_gain_db` | `-12` | Attenuation before the DAC and the echo reference, so the reference does not clip. |
 
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
