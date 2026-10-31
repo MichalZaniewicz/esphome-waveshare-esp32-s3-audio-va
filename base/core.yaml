@@ -75,12 +75,17 @@ substitutions:
   timer_ring_pause_ms: '2000'
 
   # Echo cancellation (aec_speexdsp). Which of the four ES7210 TDM slots carry
-  # the mic and the speaker loopback. UNVERIFIED on this board: the defaults
-  # come from the component's reference board, which has the same ES7210
-  # wiring (MIC1/MIC2 mics, MIC3 loopback). Check them with the "AEC raw slot"
-  # select and the "AEC slot N level" sensors (diagnostic entities in HA).
+  # the mic and the speaker loopback. Measured on this board with the "AEC slot
+  # N level" sensors: slots 0 and 2 follow room sound (MIC1/MIC2), slot 1 is
+  # silent except during playback (MIC3 loopback), slot 3 is dead.
   aec_mic_slot: '0'
   aec_ref_slot: '1'
+  # ES7210 PGA gain on the loopback channel (MIC3). This board's loopback is
+  # weak: at 0 dB a TTS reply measured about -50 dBFS, too quiet for the
+  # canceller to model the echo. 30 dB puts it near -20 dBFS with headroom.
+  # Options: 0 - 37.5 (3 dB steps up to 33). Lower it if "AEC reference peak"
+  # gets near 32767 at full volume.
+  aec_ref_gain: 30db
   # Canceller size. SpeexDSP puts its state in internal RAM, which the S3 has
   # little of: frame 256 / filter 1024 took 90 KB and left 10 KB free, and the
   # board crash-looped. Frame 128 / filter 512 (32 ms echo tail, enough for a
@@ -354,9 +359,13 @@ audio_adc:
     sample_rate: 16000
     tdm: true
     # MIC1/MIC2 are the microphones (runtime gain: `mic_gain_db`, applied by
-    # the apply_mic_gain script); MIC3 is the speaker loopback and stays at
-    # 0 dB so the reference does not clip; MIC4 is unused.
-    channel_gains: [24db, 24db, 0db, 0db]
+    # the apply_mic_gain script); MIC3 is the speaker loopback, fixed at
+    # `aec_ref_gain`; MIC4 is unused.
+    channel_gains:
+      - 24db
+      - 24db
+      - ${aec_ref_gain}
+      - 0db
 
 audio_dac:
   - platform: es8311
