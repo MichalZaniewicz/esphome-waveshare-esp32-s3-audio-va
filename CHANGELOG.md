@@ -8,7 +8,8 @@
   plays. The audio path moves from two
   `i2s_audio` buses to one full-duplex TDM bus owned by
   [aec_speexdsp](https://github.com/matt123p/esphome-aec) (from a fork with a
-  16-byte buffer alignment fix for the ESP32-S3), which uses the
+  16-byte buffer alignment fix for the ESP32-S3 and a configurable playback
+  buffer, kept at 0.5 s so ducking and barge-in act without a ~4 s lag), which uses the
   board's speaker loopback (ES7210 MIC3) as the echo reference and removes the
   device's own playback from the mic. New substitutions `aec_mic_slot`,
   `aec_ref_slot`, `aec_ref_gain`, `aec_frame_size`, `aec_filter_length`, `aec_playback_gain_db`; new diagnostic

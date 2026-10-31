@@ -182,17 +182,18 @@ esphome:
               - logger.log: "Mic enabled"
 
 # Echo cancellation, pinned so an upstream push cannot break a build.
-# aec_speexdsp comes from a fork of matt123p/esphome-aec v1.01 with one fix:
-# SpeexDSP buffers are 16-byte aligned. Upstream's 4-byte-aligned FFT
-# workspace makes the ESP32-S3's SIMD FFT overwrite heap headers (stalled API,
-# then LoadProhibited in tlsf_walk_pool). The es7210 override comes from the
+# aec_speexdsp comes from a fork of matt123p/esphome-aec v1.01 with two
+# changes: SpeexDSP buffers are 16-byte aligned (upstream's 4-byte-aligned FFT
+# workspace makes the ESP32-S3's SIMD FFT overwrite heap headers: stalled API,
+# then LoadProhibited in tlsf_walk_pool), and the playback ring size is
+# configurable (playback_buffer / playback_rebuffer). The es7210 override comes from the
 # pull request that adds TDM to ESPHome (esphome/esphome#18954, merged after
 # 2026.10); drop it once the minimum ESPHome version ships it.
 external_components:
   - source:
       type: git
       url: https://github.com/MichalZaniewicz/esphome-aec
-      ref: 5e0430035989616d4a3869fca96592b9fe58434e
+      ref: 3513103b486dc4290593d8fc3c22932d2706e4ff
       path: src/esphome
     components: [aec_speexdsp]
   - source:
@@ -404,6 +405,12 @@ aec_speexdsp:
     enabled: true
   vad: true
   playback_gain_db: ${aec_playback_gain_db}
+  # The media player and mixer already buffer upstream, so the canceller's own
+  # playback ring only absorbs task jitter. Its 4 s default made ducking, stop
+  # and barge-in take effect ~4 s late (the beep queued behind the rest of the
+  # reply).
+  playback_buffer: 500ms
+  playback_rebuffer: 150ms
   # Tracks small drift between nominal 16 kHz and the real I2S clock.
   resampler: true
   # Slot levels for the diagnostic sensors below.
