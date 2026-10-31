@@ -17,6 +17,10 @@
   [@2steuer](https://github.com/2steuer) for pointing to the component (#13).
 
 ### Changed
+- **The wake word now interrupts a reply and listens again** (barge-in).
+  Saying it while the assistant is speaking or listening stops the session
+  and the reply audio, beeps and starts a new request. Before, it only
+  cancelled the session. A plain announcement is still just stopped.
 - **The timer alarm now pauses 2 s between repeats** (was 0.5 s), so the wake
   word can be heard in the gaps and stop it. Tunable with the new
   `timer_ring_pause_ms` substitution. Key2 also stops a ringing timer (#13).

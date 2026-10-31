@@ -550,35 +550,46 @@ micro_wake_word:
               then:
                 - switch.turn_off: timer_ringing
               else:
-                # Already listening -> the wake word cancels the session.
+                # A plain announcement (no Assist session) -> the wake word
+                # just stops it.
                 - if:
                     condition:
-                      voice_assistant.is_running:
+                      and:
+                        - not:
+                            voice_assistant.is_running:
+                        - media_player.is_announcing:
                     then:
-                      voice_assistant.stop:
+                      - media_player.stop:
+                          announcement: true
                     else:
-                      # Announcing -> the wake word stops the announcement.
+                      # Barge-in: a session is running (listening or
+                      # replying) -> cut it short, then listen again.
                       - if:
                           condition:
-                            media_player.is_announcing:
+                            voice_assistant.is_running:
                           then:
+                            - voice_assistant.stop:
                             - media_player.stop:
                                 announcement: true
-                          # Otherwise: beep, then start Assist.
-                          else:
-                            - if:
+                            - wait_until:
                                 condition:
-                                  and:
-                                    - switch.is_on: wake_sound
-                                    - switch.is_off: night_mode   # the ring is enough at night
-                                then:
-                                  - script.execute:
-                                      id: play_sound
-                                      priority: true
-                                      sound_file: !lambda return id(wake_word_triggered_sound);
-                                  - delay: 300ms
-                            - voice_assistant.start:
-                                wake_word: !lambda return wake_word;
+                                  not:
+                                    voice_assistant.is_running:
+                                timeout: 2s
+                      # Beep, then start Assist.
+                      - if:
+                          condition:
+                            and:
+                              - switch.is_on: wake_sound
+                              - switch.is_off: night_mode   # the ring is enough at night
+                          then:
+                            - script.execute:
+                                id: play_sound
+                                priority: true
+                                sound_file: !lambda return id(wake_word_triggered_sound);
+                            - delay: 300ms
+                      - voice_assistant.start:
+                          wake_word: !lambda return wake_word;
 
 voice_assistant:
   id: va
