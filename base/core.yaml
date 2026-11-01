@@ -432,6 +432,10 @@ speaker:
     id: aec_speaker
     aec_speexdsp_id: aec
     num_channels: 1
+    # The canceller writes raw samples to the bus and applies no volume of its
+    # own, so the media player's volume and mute must reach the ES8311 here.
+    # The MIC3 loopback is taken after the DAC, so the echo reference follows.
+    audio_dac: es8311_dac
 
   # Mixes the announcement and media pipelines into the one physical output.
   # Mono: the board has a single speaker (mono ES8311 + NS4150B), so a second
