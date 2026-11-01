@@ -27,7 +27,7 @@ substitutions:
 
   # Onboard amplifier volume clamps. The little speaker distorts near the top,
   # so the media player is limited to this window (0.0 - 1.0).
-  volume_min: '0.4'
+  volume_min: '0.5'
   volume_max: '0.8'
 
   # Set to 'true' only if your SSID is hidden.

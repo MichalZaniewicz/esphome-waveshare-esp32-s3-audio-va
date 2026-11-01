@@ -64,8 +64,12 @@ substitutions:
   # shutdown line), so this is closer to a low-power idle than a true power off.
   enable_deep_sleep: 'false'
 
-  # Media player volume clamps (the onboard amp distorts near the top).
-  volume_min: '0.4'
+  # Media player volume clamps (the onboard amp distorts near the top). The
+  # slider maps linearly onto the ES8311 register (0.5 dB steps), about 5 dB
+  # per 10% of the slider. The canceller's -12 dB playback gain shifts the
+  # whole range down, so with 0.4 the bottom quarter of the slider was
+  # inaudible; 0.5 puts 1% at the same output level as the non-AEC build.
+  volume_min: '0.5'
   volume_max: '0.8'
 
   # Silence between repeats of the timer alarm. The board has no echo
