@@ -163,6 +163,24 @@ What lives in `waveshare-va.yaml`:
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
 
+### Selecting the other microphone
+
+The firmware captures one microphone slot, **right** by default. If that input
+is weak or unresponsive, add this at the top level of `waveshare-va.yaml`
+(alongside `packages:` and `substitutions:`), then rebuild and install:
+
+```yaml
+microphone:
+  - id: !extend i2s_mics
+    channel: left
+```
+
+`!extend` changes the existing microphone from the remote core, so there's no
+need to copy or edit `base/core.yaml`. Remove the override, or set
+`channel: right`, to restore the default.
+
+Left and right are **I2S slot names**, not verified physical capsule positions.
+
 ### Wake words
 
 The firmware ships four wake word models: `alexa` (the default), `okay_nabu`,
