@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+- **How to switch to the other microphone.** The README now shows a
+  `!extend` override in `waveshare-va.yaml` that makes the firmware listen to
+  the left I2S slot instead of the right one, which brings wake word back on
+  boards with a weak or dead right mic (#16). Thanks to
+  [@nikolai-matijevic](https://github.com/nikolai-matijevic) for finding it and
+  the docs.
+- **Contributors section** in the README.
+
 ### Changed
 - **Updates no longer need a clean build.** The example config now uses
   `refresh: 0s`, so every build fetches the latest `main` and a plain
