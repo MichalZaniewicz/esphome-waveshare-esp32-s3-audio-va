@@ -44,9 +44,10 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   fighting it. Both are exposed to Music Assistant.
 - **LED ring**: one state machine drives it. Boot, no-Wi-Fi, no-HA, listening,
   thinking, replying, timer counting, ringing, volume changed - each a distinct
-  colour/effect. Brightness and the animation for the listening / thinking /
-  replying phases are pickable from HA: solid plus 14 animations - pulses,
-  breathe, wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
+  colour/effect. Brightness, the accent colour (violet by default, any colour
+  from a picker) and the animation for the listening / thinking / replying
+  phases are pickable from HA: solid plus 14 animations - pulses, breathe,
+  wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
 - **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
   in HA. A ringing timer or alarm is silenced by saying "Stop" or the wake
   word, or by pressing Play/Pause. (A daily-alarm engine is present but its entities are
@@ -82,8 +83,8 @@ https://github.com/user-attachments/assets/3236cd4f-7184-4eee-a16a-0db6fe1603a3
    Install.
 4. In Home Assistant: the new ESPHome device appears, open **Configure** and
    assign an Assist pipeline.
-5. Say "Alexa". The ring should go violet. To use another wake word, change
-   **Wake word** on the device page (see [Wake words](#wake-words)).
+5. Say "Alexa". The ring should go violet (changeable with **Ring colour**).
+   To use another wake word, change **Wake word** on the device page (see [Wake words](#wake-words)).
 
 The example config tracks `main` with `refresh: 0s`, so every build fetches the
 latest version. To update, just run `esphome run waveshare-va.yaml` (or
@@ -146,8 +147,8 @@ skill/
 ## Configuration
 
 Everything worth changing day to day is a Home Assistant entity, not a config
-edit: mic gain, LED brightness, the ring animation per assistant phase
-(Listening / Thinking / Replying effect), the wake word and its sensitivity,
+edit: mic gain, LED brightness, the ring colour, the ring animation per
+assistant phase (Listening / Thinking / Replying effect), the wake word and its sensitivity,
 night mode, wake sound, boot sound, microphone mute.
 
 What lives in `waveshare-va.yaml`:
@@ -189,6 +190,15 @@ word does nothing during music or silence. It uses its own fixed threshold,
 independent of the wake word sensitivity settings. To interrupt a reply and ask
 something else instead, say the wake word: the reply stops and the device
 listens again.
+
+### Ring colour
+
+The **Ring colour** entity on the device page is a colour picker for the
+assistant's accent colour: listening, thinking, replying, the timer countdown
+and a ringing alarm. Only the colour is used; its on/off toggle and brightness
+do nothing (the ring level comes from **LED Ring Brightness**). Status colours
+stay fixed so they keep their meaning: red for an error or no Home Assistant
+connection, green for a volume change, a rainbow while booting.
 
 ### Night mode
 

@@ -21,6 +21,10 @@
   a sound plays and never starts Assist. It is not listed in the "Wake word"
   select and keeps its own threshold, so the sensitivity settings do not
   affect it.
+- **"Ring colour" picker in Home Assistant.** Sets the accent colour of the
+  ring for listening, thinking, replying, the timer countdown and the alarm,
+  live and saved on the device. Violet stays the default; error red, volume
+  green and the boot rainbow are unchanged.
 
 ### Changed
 - **The wake word now interrupts a reply and listens again** (barge-in).

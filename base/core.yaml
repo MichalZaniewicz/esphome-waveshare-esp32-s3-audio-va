@@ -901,6 +901,54 @@ light:
               it[i] = Color(r, g, 0);
             }
 
+  # "Ring colour": a colour picker in HA for the assistant's accent colour
+  # (listening, thinking, replying, timer countdown, alarm). It drives no
+  # hardware: control_leds reads its colour and paints status_ring with it.
+  # Only the hue matters; its on/off and brightness are ignored (LED Ring
+  # Brightness sets the level). Status colours stay fixed: red = error / no HA,
+  # green = volume, rainbow = boot.
+  - platform: rgb
+    id: ring_colour
+    name: "Ring colour"
+    icon: mdi:palette
+    entity_category: config
+    red: ring_colour_out_r
+    green: ring_colour_out_g
+    blue: ring_colour_out_b
+    gamma_correct: 1.0
+    default_transition_length: 0s
+    restore_mode: RESTORE_DEFAULT_ON
+    initial_state:              # violet, the colour before this picker existed
+      red: 100%
+      green: 0%
+      blue: 100%
+    # Also fires while the saved colour is restored in setup(), before the ring
+    # is up, hence the init_in_progress gate (see the effect selects).
+    on_state:
+      - if:
+          condition:
+            lambda: 'return !id(init_in_progress);'
+          then:
+            - script.execute: control_leds
+
+# Placeholder outputs for the "Ring colour" picker above (it needs three).
+output:
+  - platform: template
+    id: ring_colour_out_r
+    type: float
+    write_action:
+      - lambda: (void) state;
+  - platform: template
+    id: ring_colour_out_g
+    type: float
+    write_action:
+      - lambda: (void) state;
+  - platform: template
+    id: ring_colour_out_b
+    type: float
+    write_action:
+      - lambda: (void) state;
+
 globals:
   - id: mic_is_muted
     type: bool
@@ -1128,6 +1176,18 @@ script:
           auto set = [&](const std::string &effect, float r, float g, float b) {
             id(led_set_effect).execute(effect, r, g, b);
           };
+          // The assistant's accent colour from the "Ring colour" picker,
+          // normalised so its strongest channel is 1 (the picker's own
+          // brightness is ignored). Falls back to violet if it reads black.
+          const auto &rc = id(ring_colour).remote_values;
+          float ar = rc.get_red(), ag = rc.get_green(), ab = rc.get_blue();
+          const float amax = std::max(ar, std::max(ag, ab));
+          if (amax <= 0.0f) { ar = 1.0f; ag = 0.0f; ab = 1.0f; }
+          else              { ar /= amax; ag /= amax; ab /= amax; }
+          // k keeps the old per-phase levels: 0.8 listening, 0.6 the rest.
+          auto accent = [&](const std::string &effect, float k) {
+            set(effect, ar * k, ag * k, ab * k);
+          };
 
           if (improv_ble) {                          // BLE provisioning
             set("Pulse Medium", 1.0, 0.89, 0.71);    // warm white
@@ -1143,7 +1203,7 @@ script:
             return;
           }
           if (ringing) {                             // timer/alarm ringing
-            set("Pulse Fast", 0.6, 0.0, 0.6);
+            accent("Pulse Fast", 0.6);
             return;
           }
 
@@ -1152,13 +1212,13 @@ script:
             // Listening effect, so the chosen animation shows from the wake word on.
             case ${voice_assist_waiting_for_command_phase_id}:
             case ${voice_assist_listening_for_command_phase_id}:
-              set(id(listening_effect).current_option(), 0.8, 0.0, 0.8);
+              accent(id(listening_effect).current_option(), 0.8);
               return;
             case ${voice_assist_thinking_phase_id}:
-              set(id(thinking_effect).current_option(), 0.6, 0.0, 0.6);
+              accent(id(thinking_effect).current_option(), 0.6);
               return;
             case ${voice_assist_replying_phase_id}:
-              set(id(replying_effect).current_option(), 0.6, 0.0, 0.6);
+              accent(id(replying_effect).current_option(), 0.6);
               return;
             case ${voice_assist_error_phase_id}:
               set("Pulse Fast", 1.0, 0.0, 0.0);
@@ -1172,7 +1232,7 @@ script:
           // A timer is counting down. "Timer countdown on ring" turns this off,
           // so the ring stays dark (e.g. a nap timer in a dark room).
           if (timers_active && id(timer_countdown_ring).state) {
-            set("Pulse Slow", 0.6, 0.0, 0.6);
+            accent("Pulse Slow", 0.6);
             return;
           }
 
