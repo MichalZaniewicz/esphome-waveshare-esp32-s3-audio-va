@@ -16,6 +16,11 @@
   entities "AEC raw slot" and "AEC slot N level" for checking the slot map.
   Playback now runs at 16 kHz end to end. Thanks to
   [@2steuer](https://github.com/2steuer) for pointing to the component (#13).
+- **Say "Stop" to end a reply, an announcement or a timer alarm.** An internal
+  `stop` model (the one Home Assistant Voice PE uses) is armed only while such
+  a sound plays and never starts Assist. It is not listed in the "Wake word"
+  select and keeps its own threshold, so the sensitivity settings do not
+  affect it.
 
 ### Changed
 - **The wake word now interrupts a reply and listens again** (barge-in).

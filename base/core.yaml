@@ -161,7 +161,7 @@ esphome:
                   value: !lambda |-
                     uint8_t cutoff = id(alexa).get_default_probability_cutoff();
                     for (auto *m : id(mww).get_wake_words()) {
-                      if (m->is_enabled()) {
+                      if (m->is_enabled() && !m->get_internal_only()) {
                         cutoff = m->get_default_probability_cutoff();
                         break;
                       }
@@ -486,6 +486,7 @@ media_player:
           id: media_mixing_input
           decibel_reduction: 20
           duration: 0.0s
+      - script.execute: arm_stop_word
     on_state:
       # Amp follows playback: turn it on the instant audio starts. It stays on
       # afterwards (the speaker then holds the line at clean silence), so there
@@ -550,6 +551,13 @@ micro_wake_word:
       id: hey_jarvis
     - model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/hey_mycroft.json
       id: hey_mycroft
+    # "Stop": not a wake word. Internal, so it is not offered in the "Wake word"
+    # select, starts disabled and never saves its state. arm_stop_word enables
+    # it only while a reply, announcement or timer alarm is playing; saying it
+    # ends that sound and never starts Assist.
+    - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
+      id: stop
+      internal: true
   vad:
     model: https://github.com/esphome/micro-wake-word-models/raw/main/models/v2/vad.json
   on_wake_word_detected:
@@ -565,46 +573,60 @@ micro_wake_word:
               then:
                 - switch.turn_off: timer_ringing
               else:
-                # A plain announcement (no Assist session) -> the wake word
-                # just stops it.
+                # "Stop" (armed only while something plays) -> end the reply
+                # or announcement, do not listen again.
                 - if:
                     condition:
-                      and:
-                        - not:
-                            voice_assistant.is_running:
-                        - media_player.is_announcing:
+                      lambda: 'return wake_word == "Stop";'
                     then:
-                      - media_player.stop:
-                          announcement: true
-                    else:
-                      # Barge-in: a session is running (listening or
-                      # replying) -> cut it short, then listen again.
                       - if:
                           condition:
                             voice_assistant.is_running:
                           then:
                             - voice_assistant.stop:
-                            - media_player.stop:
-                                announcement: true
-                            - wait_until:
-                                condition:
-                                  not:
-                                    voice_assistant.is_running:
-                                timeout: 2s
-                      # Beep, then start Assist.
+                      - media_player.stop:
+                          announcement: true
+                    else:
+                      # A plain announcement (no Assist session) -> the wake word
+                      # just stops it.
                       - if:
                           condition:
                             and:
-                              - switch.is_on: wake_sound
-                              - switch.is_off: night_mode   # the ring is enough at night
+                              - not:
+                                  voice_assistant.is_running:
+                              - media_player.is_announcing:
                           then:
-                            - script.execute:
-                                id: play_sound
-                                priority: true
-                                sound_file: !lambda return id(wake_word_triggered_sound);
-                            - delay: 300ms
-                      - voice_assistant.start:
-                          wake_word: !lambda return wake_word;
+                            - media_player.stop:
+                                announcement: true
+                          else:
+                            # Barge-in: a session is running (listening or
+                            # replying) -> cut it short, then listen again.
+                            - if:
+                                condition:
+                                  voice_assistant.is_running:
+                                then:
+                                  - voice_assistant.stop:
+                                  - media_player.stop:
+                                      announcement: true
+                                  - wait_until:
+                                      condition:
+                                        not:
+                                          voice_assistant.is_running:
+                                      timeout: 2s
+                            # Beep, then start Assist.
+                            - if:
+                                condition:
+                                  and:
+                                    - switch.is_on: wake_sound
+                                    - switch.is_off: night_mode   # the ring is enough at night
+                                then:
+                                  - script.execute:
+                                      id: play_sound
+                                      priority: true
+                                      sound_file: !lambda return id(wake_word_triggered_sound);
+                                  - delay: 300ms
+                            - voice_assistant.start:
+                                wake_word: !lambda return wake_word;
 
 voice_assistant:
   id: va
@@ -969,6 +991,34 @@ script:
   # Cutoffs are quantised uint8 (255 = 1.0). The preset offsets follow the
   # okay_nabu figures measured on the Dinner Party Corpus: 0.85 -> 0.000 FAPH,
   # 0.69 -> 0.376 FAPH, 0.56 -> 0.751 FAPH (FAPH = false accepts per hour).
+  # Arms the "Stop" model for the length of an announcement (a reply, an HA
+  # announcement, a timer alarm), runs from on_announcement. The 1 s wait skips
+  # short sounds (wake beep, boot chime), where it is pointless. Restart mode:
+  # on_announcement can fire again mid-sound; the disable at the end runs
+  # unconditionally, so a restarted run cannot leave the model armed. While a
+  # timer rings, timer_ringing owns the model instead.
+  - id: arm_stop_word
+    mode: restart
+    then:
+      - delay: 1s
+      - if:
+          condition:
+            and:
+              - media_player.is_announcing:
+              - switch.is_off: timer_ringing
+          then:
+            - micro_wake_word.enable_model: stop
+            - wait_until:
+                not:
+                  media_player.is_announcing:
+      - if:
+          condition:
+            switch.is_off: timer_ringing
+          then:
+            - micro_wake_word.disable_model: stop
+
+  # The "Stop" model (internal) is left out: it keeps its own manifest cutoff,
+  # since a preset offset would make it fire on the reply audio itself.
   - id: apply_wake_word_sensitivity
     mode: restart
     then:
@@ -985,12 +1035,14 @@ script:
             float t = id(wake_word_threshold).state;
             if (std::isnan(t)) return;
             // Every model gets it, so it follows the "Wake word" choice in HA.
-            for (auto *m : id(mww).get_wake_words()) m->set_probability_cutoff(to_cutoff(t));
+            for (auto *m : id(mww).get_wake_words())
+              if (!m->get_internal_only()) m->set_probability_cutoff(to_cutoff(t));
           } else {
             int offset = 0;                                   // Slightly: model default
             if (opt == "Moderately sensitive") offset = 40;   // about -0.16
             else if (opt == "Very sensitive") offset = 75;    // about -0.29
-            for (auto *m : id(mww).get_wake_words()) preset(m, offset);
+            for (auto *m : id(mww).get_wake_words())
+              if (!m->get_internal_only()) preset(m, offset);
           }
           for (auto *m : id(mww).get_wake_words()) {
             ESP_LOGI("wake_word", "Sensitivity '%s': %s cutoff %u%s", opt.c_str(), m->get_wake_word().c_str(),
@@ -1529,11 +1581,13 @@ switch:
           id: media_mixing_input
           decibel_reduction: 20
           duration: 0.0s
+      - micro_wake_word.enable_model: stop   # "Stop" silences the alarm
       - script.execute: ring_timer
       - script.execute: control_leds
       - delay: 15min           # give up if nobody stops it
       - switch.turn_off: timer_ringing
     on_turn_off:
+      - micro_wake_word.disable_model: stop
       - script.execute: disable_repeat
       - if:
           condition:

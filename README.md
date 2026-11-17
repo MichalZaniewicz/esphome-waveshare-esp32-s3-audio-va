@@ -48,8 +48,8 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   replying phases are pickable from HA: solid plus 14 animations - pulses,
   breathe, wipe, scan, spinner, comet, twinkle, fireworks, fire, rainbows.
 - **Timers**: set by voice, with an on-ring countdown and a "Next timer" sensor
-  in HA. A ringing timer or alarm is silenced by saying the wake word or by
-  pressing Play/Pause. (A daily-alarm engine is present but its entities are
+  in HA. A ringing timer or alarm is silenced by saying "Stop" or the wake
+  word, or by pressing Play/Pause. (A daily-alarm engine is present but its entities are
   hidden by default.)
 - **Buttons**: the three onboard keys do volume down, play-pause, volume up.
   While a timer or alarm is ringing, Play/Pause silences it instead.
@@ -179,6 +179,16 @@ If several satellites share one Home Assistant instance and can hear the same
 voice, give each a different wake word. Home Assistant ignores a wake word it
 already heard within the last two seconds, on any device, so two satellites on
 the same word cancel each other out (the second one beeps and does nothing).
+
+### Saying "Stop"
+
+While the device is playing a reply, a Home Assistant announcement or a timer
+alarm, saying **"Stop"** ends it without starting a new request. The model is
+armed only for the length of that sound (from about one second in), so the
+word does nothing during music or silence. It uses its own fixed threshold,
+independent of the wake word sensitivity settings. To interrupt a reply and ask
+something else instead, say the wake word: the reply stops and the device
+listens again.
 
 ### Night mode
 
