@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.3.0] - 2026-11-21
 
 ### Before you update
 - **ESPHome 2026.11.0 or newer is required.** The echo canceller needs the
