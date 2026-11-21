@@ -148,7 +148,9 @@ esphome:
         # Push the mic gain restored from flash into the ES7210. The codec boots
         # with `channel_gains` from audio_adc, so without this a saved value would
         # show in HA while the hardware sat at the default.
-        - script.execute: apply_mic_gain
+        - script.execute:
+            id: apply_mic_gain
+            gain: !lambda return id(mic_gain_db).state;
         # First boot only: start the wake word threshold slider at the active
         # model's own default cutoff (manifest or YAML), not at the fixed
         # initial_value.
@@ -1016,10 +1018,14 @@ script:
   # the gain registers (MIC1 0x43, MIC2 0x44; low nibble = 3 dB steps,
   # 13 = 36 dB) are written directly. Runs from the slider and from on_boot,
   # since the restored slider value is not applied by TemplateNumber::setup().
+  # The gain is a parameter: in set_action the number still holds the OLD
+  # value (TemplateNumber::control runs set_action before publish_state), so
+  # reading id(mic_gain_db).state there applied the previous slider position.
   - id: apply_mic_gain
+    parameters:
+      gain: float
     then:
       - lambda: |-
-          const float gain = id(mic_gain_db).state;
           const uint8_t value = gain <= 33.0f ? (uint8_t) ((gain + 0.5f) / 3.0f) : 13;
           for (uint8_t reg = 0x43; reg <= 0x44; reg++) {
             uint8_t current;
@@ -1688,7 +1694,9 @@ number:
     # publishes it and does not run set_action.
     optimistic: true
     set_action:
-      - script.execute: apply_mic_gain
+      - script.execute:
+          id: apply_mic_gain
+          gain: !lambda return x;
 
   # Detection threshold used when "Wake word sensitivity" is set to "Custom".
   # It applies to whichever wake word is active. On first boot it is seeded
