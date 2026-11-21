@@ -11,6 +11,10 @@
   `waveshare-va.yaml` if you added one (`channel: left`). The new microphone
   has no `channel` option, so the build fails with it in place. To use the
   other mic, set `aec_mic_slot: '2'` in `substitutions:` instead.
+- **Raise `volume_min` to `0.5`** if your `waveshare-va.yaml` still has
+  `volume_min: '0.4'` from the old template. Echo cancellation turns playback
+  down by 12 dB before the codec, so at `0.4` the bottom of the volume slider
+  is inaudible. `0.5` is the new default; deleting the line works too.
 
 ### Added
 - **Acoustic echo cancellation.** The wake word now works while music, a

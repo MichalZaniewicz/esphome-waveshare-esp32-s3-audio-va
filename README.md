@@ -95,6 +95,16 @@ latest version. To update, just run `esphome run waveshare-va.yaml` (or
 **Install** in the dashboard). After upgrading ESPHome itself, run
 `esphome clean waveshare-va.yaml` first if the build fails.
 
+**Upgrading from v1.2.x or older to v1.3.0 (echo cancellation)** needs three
+changes, all listed under "Before you update" in the
+[CHANGELOG](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/blob/main/CHANGELOG.md):
+
+1. Update ESPHome to **2026.11.0 or newer**, then clean and rebuild.
+2. Remove a `microphone:` block with `!extend i2s_mics` from `waveshare-va.yaml`
+   if you added one. To use the other mic, set `aec_mic_slot: '2'` instead.
+3. Change `volume_min: '0.4'` to `'0.5'` (or delete the line), or the bottom of
+   the volume slider is inaudible.
+
 ## Documentation
 
 The [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki)
