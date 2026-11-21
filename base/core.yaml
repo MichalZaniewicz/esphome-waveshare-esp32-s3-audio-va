@@ -115,7 +115,7 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2026.8.0     # esp32_rmt_led_strip channel_colors
+  min_version: 2026.11.0    # es7210 tdm (echo cancellation)
   on_boot:
     # Publish a "no timer" placeholder and paint the ring as early as we can, so
     # the device shows life while Wi-Fi/API are still coming up.
@@ -190,9 +190,8 @@ esphome:
 # changes: SpeexDSP buffers are 16-byte aligned (upstream's 4-byte-aligned FFT
 # workspace makes the ESP32-S3's SIMD FFT overwrite heap headers: stalled API,
 # then LoadProhibited in tlsf_walk_pool), and the playback ring size is
-# configurable (playback_buffer / playback_rebuffer). The es7210 override comes from the
-# pull request that adds TDM to ESPHome (esphome/esphome#18954, merged after
-# 2026.10); drop it once the minimum ESPHome version ships it.
+# configurable (playback_buffer / playback_rebuffer). The ES7210 driver is the
+# stock one: its TDM mode shipped in ESPHome 2026.11.0.
 external_components:
   - source:
       type: git
@@ -200,12 +199,6 @@ external_components:
       ref: 3513103b486dc4290593d8fc3c22932d2706e4ff
       path: src/esphome
     components: [aec_speexdsp]
-  - source:
-      type: git
-      url: https://github.com/matt123p/esphome
-      ref: 9347e8fe78cdf01a600c325fd0fc743aeef7c8a1
-      path: esphome/components
-    components: [es7210]
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -1017,11 +1010,12 @@ globals:
 
 script:
   # Push `mic_gain_db` into the two mic channels only. ES7210::set_mic_gain
-  # would also move MIC3, the echo reference, and the TDM build's
-  # set_channel_gain does not reach the hardware after setup, so the gain
-  # registers (MIC1 0x43, MIC2 0x44; low nibble = 3 dB steps, 13 = 36 dB) are
-  # written directly. Runs from the slider and from on_boot, since the
-  # restored slider value is not applied by TemplateNumber::setup().
+  # would also move MIC3, the echo reference. ES7210::set_channel_gain does
+  # reach the hardware after setup, but it reprograms all four channels and
+  # briefly powers down every PGA, the reference included, on each call. So
+  # the gain registers (MIC1 0x43, MIC2 0x44; low nibble = 3 dB steps,
+  # 13 = 36 dB) are written directly. Runs from the slider and from on_boot,
+  # since the restored slider value is not applied by TemplateNumber::setup().
   - id: apply_mic_gain
     then:
       - lambda: |-
@@ -1032,8 +1026,6 @@ script:
             if (id(adc_mic).read_byte(reg, &current))
               id(adc_mic).write_byte(reg, (current & 0xF0) | value);
           }
-          id(adc_mic).set_channel_gain(0, gain);
-          id(adc_mic).set_channel_gain(1, gain);
           ESP_LOGI("mic", "[MIC] ES7210 mic gain -> %.1f dB (reference untouched)", gain);
   # Push the wake word cutoffs for the current "Wake word sensitivity" option.
   # Cutoffs are quantised uint8 (255 = 1.0). The preset offsets follow the
