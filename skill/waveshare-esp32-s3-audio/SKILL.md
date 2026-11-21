@@ -68,43 +68,80 @@ drive them, and **ESPHome cannot run a single i2s_audio bus full-duplex**: a
 microphone and a speaker on one bus each call `i2s_new_channel` on the port, and
 the second fails at runtime with `Parent bus is busy` (the speaker then crackles).
 
-The layout that works on **stock ESPHome** (no patched es8311):
+The layout this firmware uses (ESPHome 2026.11.0+): **one full-duplex,
+four-slot TDM bus owned by `aec_speexdsp`** (SpeexDSP echo canceller, from a
+fork of matt123p/esphome-aec), which gives a real echo reference.
 
-- **Two i2s_audio buses** (two I2S ports) over the shared pins. The **mic bus is
-  the master** and the **speaker bus is a slave** reading its clock.
-- The mic is always capturing for the wake word, so as master it drives
-  BCLK/LRCK/MCLK **continuously** - which is what a slave speaker (and the ES8311
-  DAC) need. Making the mic the master also gives it a correct-rate stream; a
-  codec-mastered clock (the old `force_master` route) fed the mic garbage and
-  killed wake word.
-- **Pin the mic to 16-bit.** As master it sets the frame slot width, and the
-  i2s_audio default is 32-bit; a 32-bit frame against the 16-bit ES8311/speaker
-  doubles the bit clock they expect and playback comes out as noise.
+- The **ESP is the I2S master**; ES8311 and ES7210 are stock drivers and slave
+  to it. The ES7210 runs with `tdm: true` (stock since 2026.11.0; ESP32 and
+  ESP32-S2 have no TDM and are rejected).
+- Each 16 kHz frame carries the four ES7210 inputs in and the DAC samples out
+  on the same clock. **Measured slot map on this board: slots 0 and 2 = mics,
+  slot 1 = MIC3 speaker loopback, slot 3 = dead.**
+- The canceller processes **one** mic slot (`microphone_slots`), half the cost
+  of two, which matters on the S3.
 
 ```yaml
-i2s_audio:
-  - id: i2s_input                 # mic bus = master (drives the shared clock)
-    i2s_mclk_pin: GPIO12
-    i2s_bclk_pin:  { number: GPIO13, allow_other_uses: true }
-    i2s_lrclk_pin: { number: GPIO14, allow_other_uses: true }
-  - id: i2s_output                # speaker bus = slave
-    i2s_bclk_pin:  { number: GPIO13, allow_other_uses: true }
-    i2s_lrclk_pin: { number: GPIO14, allow_other_uses: true }
-audio_dac:   { platform: es8311, id: es8311_dac }   # stock
-audio_adc:   { platform: es7210, id: adc_mic }      # stock
-microphone:
-  - platform: i2s_audio
-    i2s_audio_id: i2s_input       # default i2s_mode: primary -> master
+audio_adc:
+  - platform: es7210
+    id: adc_mic
     bits_per_sample: 16bit
+    sample_rate: 16000
+    tdm: true
+    channel_gains: [24db, 24db, 30db, 0db]   # MIC3 = loopback, boosted
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    bits_per_sample: 16bit
+    sample_rate: 16000
+    use_mclk: true
+aec_speexdsp:
+  id: aec
+  audio_adc: adc_mic
+  i2s_port: 0
+  tdm_slots: 4
+  microphone_slots: [0]
+  reference_source: analog_slot
+  reference_slot: 1
+  tx_slots: [0, 1]
+  frame_size: 128
+  filter_length: 512
+  playback_buffer: 500ms
+microphone:
+  - { platform: aec_speexdsp, id: i2s_mics, aec_speexdsp_id: aec }
 speaker:
-  - platform: i2s_audio
-    i2s_audio_id: i2s_output
-    i2s_mode: secondary           # slave to the mic's clock
+  - platform: aec_speexdsp
+    id: aec_speaker
+    aec_speexdsp_id: aec
+    audio_dac: es8311_dac          # without it HA volume/mute do nothing
 ```
 
-Do **not** make the ES8311 the master via a `force_master`-style patch: a
-codec-mastered clock feeds the ESP mic a wrong-rate stream and kills the wake
-word. The ESP-mastered two-bus layout needs no patched component.
+**Fallback without AEC (stock `i2s_audio` only):** two buses over the shared
+pins, the **mic bus as master** (always capturing, so the clock never stops),
+the speaker bus as a slave (`i2s_mode: secondary`), and the mic pinned to
+**16-bit** (the 32-bit default doubles the bit clock and playback becomes
+noise). Do **not** make the ES8311 the master via a `force_master`-style
+patch: a codec-mastered clock feeds the ESP mic a wrong-rate stream and kills
+the wake word.
+
+### AEC gotchas
+
+- **The MIC3 loopback is weak on this board** (about -50 dBFS for a TTS reply at
+  0 dB gain, so the canceller removed nothing). Boost MIC3 to ~30 dB and keep
+  `playback_gain_db` around -12 so the reference does not clip.
+- **ESP32-S3 FFT needs 16-byte aligned buffers.** Upstream SpeexDSP got 4-byte
+  aligned memory and the S3 SIMD FFT overwrote heap headers: a stalled API
+  ("Timeout waiting for DeviceInfoResponse"), then `LoadProhibited` in
+  `tlsf_walk_pool`. The pinned fork allocates with `heap_caps_aligned_alloc(16)`.
+- **Internal RAM is the limit.** Frame 256 / filter 1024 left ~10 KB free and
+  crash-looped; frame 128 / filter 512 (32 ms tail) leaves ~65 KB, DSP load
+  ~25%.
+- **The canceller's playback ring defaults to 4 s**, which made ducking, "stop"
+  and barge-in act ~4 s late. Set `playback_buffer: 500ms`.
+- **Mic gain: write MIC1/MIC2 registers (0x43/0x44) directly.**
+  `set_mic_gain()` also moves MIC3, the reference. Stock `set_channel_gain()`
+  does reach the hardware after setup, but each call reprograms all four
+  channels and briefly powers down every PGA, the reference included.
 
 ## Gotchas that cost real time
 
@@ -134,13 +171,9 @@ word. The ESP-mastered two-bus layout needs no patched component.
   (`cv.ensure_list(cv.int_range(0, 7))`, default `0`), not a count. This firmware
   just passes the mic directly (`microphone: i2s_mics`) and lets it default, so
   the wrapper isn't used - simplest, and Assist won't take a stereo source anyway.
-- **Hardware AEC is not reachable from stock ESPHome here.** The demo packs
-  4x16-bit ADC channels into 2x32-bit I2S slots and unpacks in software; ESPHome
-  doesn't. Use `noise_suppression_level` / `auto_gain` instead. Practical fallout:
-  the mic hears the device's own speaker loudly, so a "stop" wake word to
-  interrupt a reply does not work on this board (detected too weakly and late).
-  (The demo's declared slot order `"RMNM"` also doesn't reconcile with the
-  schematic wiring - unresolved.)
+- **The vendor demo's slot order `"RMNM"`** (slot0 = reference) does not match
+  what this board delivers in ESPHome's TDM mode (slot 1 = reference). Measure
+  with per-slot level sensors instead of trusting the demo.
 - **Cold-boot: mic + LEDs sometimes don't come up until a reset.** Reported on
   the HA forum in **a single post with zero replies, with no published root cause
   or fix.** The TCA9555 direction registers defaulting to `0xFF` (all inputs)

@@ -2,10 +2,19 @@
 
 ## [Unreleased]
 
+### Before you update
+- **ESPHome 2026.11.0 or newer is required.** The echo canceller needs the
+  TDM mode of the stock ES7210 driver, which first shipped in 2026.11.0.
+  Update ESPHome (or the ESPHome add-on) first, then run
+  `esphome clean waveshare-va.yaml` and rebuild.
+- **Remove a `microphone:` override with `!extend i2s_mics`** from your
+  `waveshare-va.yaml` if you added one (`channel: left`). The new microphone
+  has no `channel` option, so the build fails with it in place. To use the
+  other mic, set `aec_mic_slot: '2'` in `substitutions:` instead.
+
 ### Added
-- **Acoustic echo cancellation (alpha, `aec` branch, being tested on
-  hardware).** Meant to let the wake word work while music or an alarm
-  plays. The audio path moves from two
+- **Acoustic echo cancellation.** The wake word now works while music, a
+  reply or the timer alarm plays. The audio path moves from two
   `i2s_audio` buses to one full-duplex TDM bus owned by
   [aec_speexdsp](https://github.com/matt123p/esphome-aec) (from a fork with a
   16-byte buffer alignment fix for the ESP32-S3 and a configurable playback
@@ -25,12 +34,11 @@
   ring for listening, thinking, replying, the timer countdown and the alarm,
   live and saved on the device. Violet stays the default; error red, volume
   green and the boot rainbow are unchanged.
-- **How to switch to the other microphone.** The README now shows a
-  `!extend` override in `waveshare-va.yaml` that makes the firmware listen to
-  the left I2S slot instead of the right one, which brings wake word back on
-  boards with a weak or dead right mic (#16). Thanks to
-  [@nikolai-matijevic](https://github.com/nikolai-matijevic) for finding it and
-  the docs.
+- **How to switch to the other microphone.** The README shows how to pick
+  the other mic with the `aec_mic_slot` substitution, which brings wake word
+  back on boards with a weak or dead mic (#16). Thanks to
+  [@nikolai-matijevic](https://github.com/nikolai-matijevic) for finding the
+  problem and documenting the first fix.
 - **Contributors section** in the README.
 
 ### Changed

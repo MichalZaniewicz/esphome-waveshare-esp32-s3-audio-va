@@ -6,7 +6,7 @@
 # with announcements, the 7x WS2812 status ring, the three onboard buttons (via
 # the TCA9555 expander) and voice timers + an alarm clock.
 #
-# AUDIO LAYOUT (aec branch, alpha)
+# AUDIO LAYOUT
 # One full-duplex, four-slot TDM bus owned by the aec_speexdsp component
 # (https://github.com/matt123p/esphome-aec). The ESP is the I2S master; the
 # ES7210 (ADC) delivers both mics plus MIC3, the board's speaker loopback, as
@@ -232,7 +232,7 @@ psram:
   mode: octal
   speed: 80MHz
 
-# Alpha: memory and main loop health while the canceller runs.
+# Memory and main loop health while the canceller runs.
 debug:
   update_interval: 15s
 
@@ -413,7 +413,7 @@ aec_speexdsp:
   # Slot levels for the diagnostic sensors below.
   meters:
     id: aec_meters
-  # Alpha: log DSP load (must stay well under 100%) and transport errors.
+  # Log DSP load (must stay well under 100%) and transport errors.
   profiling: true
   diagnostics: true
 

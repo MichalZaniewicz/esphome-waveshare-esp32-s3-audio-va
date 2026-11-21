@@ -21,8 +21,8 @@ which silently removes any <img> placed inside it. -->
 
 ![Trailer: the voice assistant, the LED ring animations and the Home Assistant controls](docs/trailer.webp)
 
-> **Status: stable (v1.2.0).** Wake word, STT/TTS, clean playback and the LED
-> ring are confirmed on-device. Full docs are in the
+> **Status: stable (v1.3.0).** Wake word, STT/TTS, echo cancellation, clean
+> playback and the LED ring are confirmed on-device. Full docs are in the
 > [Wiki](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki);
 > the release history is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -39,6 +39,10 @@ You  ──▶  Waveshare ESP32-S3  ──▶  Home Assistant Assist
   Nabu, Hey Jarvis or Hey Mycroft, picked in Home Assistant), the full Home
   Assistant Assist pipeline (STT / LLM / TTS), a wake beep and music ducking
   while it listens.
+- **Echo cancellation**: the board's speaker loopback is the echo reference, so
+  the device removes its own playback from the mic. The wake word works while
+  music, a reply or the timer alarm plays, and saying it mid-reply interrupts
+  the reply and listens again.
 - **Simultaneous music and announcements**: a mixer speaker blends the media and
   announcement pipelines, so a doorbell announcement ducks the music instead of
   fighting it. Both are exposed to Music Assistant.
@@ -66,7 +70,7 @@ https://github.com/user-attachments/assets/3236cd4f-7184-4eee-a16a-0db6fe1603a3
 
 ## Quick start
 
-> Requires **ESPHome 2026.8.0+**.
+> Requires **ESPHome 2026.11.0+**.
 
 1. Copy `secrets.example.yaml` to `secrets.yaml` and fill in your Wi-Fi. The
    native API is unencrypted by default; enable encryption in `base/core.yaml`
@@ -98,31 +102,33 @@ has the full guide:
 
 - **[Installation](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Installation)**: first flash, Home Assistant setup, updating.
 - **[Configuration](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Configuration)**: every substitution and every Home Assistant entity.
-- **[Audio architecture](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Audio-architecture)**: the shared-I2S two-bus design, in depth.
+- **[Audio architecture](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Audio-architecture)**: the TDM bus and echo cancellation, in depth.
 - **[LED ring](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/LED-ring)**: the state machine and every ring effect.
 - **[Hardware](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Hardware)**: pinout, I2C map, and sourced gotchas.
 - **[Troubleshooting](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/Troubleshooting)** and **[FAQ](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/wiki/FAQ)**.
 
-## How the shared I2S bus is handled
+## How the audio path works
 
-The board wires the **ES8311 (DAC) and the ES7210 (ADC) to the same BCLK/LRCLK
-pins**, and only one device can drive those clocks. ESPHome also cannot run a
-single I2S bus full-duplex: a microphone and a speaker on one bus each try to
-init the port, and the second fails with "Parent bus is busy".
+The board wires the **ES8311 (DAC) and the ES7210 (ADC) to the same
+MCLK/BCLK/LRCLK pins**, with one data line each way. Stock `i2s_audio` cannot
+run one bus full-duplex ("Parent bus is busy"), and splitting it into two buses
+gives no echo reference that is in step with the mic.
 
-The layout that works, all on **stock ESPHome components**:
+The firmware runs **one full-duplex, four-slot TDM bus** owned by
+[aec_speexdsp](https://github.com/matt123p/esphome-aec) (pinned to a fork with
+an ESP32-S3 buffer alignment fix and a configurable playback buffer):
 
-- **Two I2S buses** (two ports) over the shared pins. The **mic bus is the I2S
-  master**: it is always capturing for the wake word, so it drives BCLK/LRCLK/MCLK
-  continuously. The **speaker bus is a slave** that reads the mic's clock, so it
-  never needs a port of its own to master.
-- The ES8311 and ES7210 are stock and slave to the mic's clock.
-- The mic is pinned to **16-bit** (the i2s_audio default is 32-bit); since the
-  mic is master it sets the frame's slot width, and a 32-bit frame against the
-  16-bit DAC comes out as noise.
+- The **ESP is the I2S master**. Both codecs are stock ESPHome drivers; the
+  ES7210 runs in its TDM mode (`tdm: true`, ESPHome 2026.11.0 and newer).
+- Every 16 kHz frame carries the ES7210's four inputs: the two mics, **MIC3**
+  (the board's analog loopback of the speaker) and an unused MIC4. The DAC
+  plays from the same frame.
+- **SpeexDSP** cancels the loopback out of the mic signal, then suppresses
+  noise. Wake word and Assist only hear the cleaned signal.
 
-This gives simultaneous capture + playback with no custom component. The
-annotated config is in the audio section of `base/core.yaml`.
+Because the reference and the mic share one clock, the canceller can line them
+up exactly, which two separate buses could not do. The annotated config is in
+the audio section of `base/core.yaml`.
 
 ## Repository layout
 
@@ -171,21 +177,18 @@ should not need them unless you are porting to another board.
 
 ### Selecting the other microphone
 
-The firmware captures one microphone slot, **right** by default. If that input
-is weak or unresponsive, add this at the top level of `waveshare-va.yaml`
-(alongside `packages:` and `substitutions:`), then rebuild and install:
+The canceller processes one microphone, **TDM slot 0** by default. The other
+mic is slot 2. If the default input is weak or unresponsive, set this in the
+`substitutions:` of `waveshare-va.yaml`, then rebuild and install:
 
 ```yaml
-microphone:
-  - id: !extend i2s_mics
-    channel: left
+substitutions:
+  aec_mic_slot: '2'
 ```
 
-`!extend` changes the existing microphone from the remote core, so there's no
-need to copy or edit `base/core.yaml`. Remove the override, or set
-`channel: right`, to restore the default.
-
-Left and right are **I2S slot names**, not verified physical capsule positions.
+Remove the line to go back to slot 0. The "AEC slot N level" diagnostic
+sensors show which slots follow room sound. Slot numbers are positions in the
+TDM frame, not verified physical capsule positions.
 
 ### Wake words
 
@@ -279,12 +282,16 @@ cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 Thanks to everyone who sent code to this project:
 
 - <img src="https://github.com/clemenszwerg.png?size=40" width="20" height="20" alt=""> [@clemenszwerg](https://github.com/clemenszwerg): the ESPHome 2026.10 build fix (`const` audio files)
-- <img src="https://github.com/nikolai-matijevic.png?size=40" width="20" height="20" alt=""> [@nikolai-matijevic](https://github.com/nikolai-matijevic): selecting the other microphone with `!extend`, the fix for boards with a weak or dead right mic
+- <img src="https://github.com/nikolai-matijevic.png?size=40" width="20" height="20" alt=""> [@nikolai-matijevic](https://github.com/nikolai-matijevic): selecting the other microphone, the fix for boards with a weak or dead mic
 
 ## Credits
 
 - **[jensenbox](https://github.com/jensenbox/waveshare-esp32-s3-audio)**: the
   ESP-master I2S layout for this board that the audio setup is based on.
 - **ESPHome**: everything the firmware is built out of.
+- **[matt123p](https://github.com/matt123p/esphome-aec)**: the `aec_speexdsp`
+  echo canceller and the TDM mode of the ES7210 driver in ESPHome.
+- **[2steuer](https://github.com/2steuer)**: pointed to the echo canceller
+  ([#13](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/issues/13)).
 - **[Home Assistant Voice PE](https://github.com/esphome/home-assistant-voice-pe)**:
   the sounds, and the phase/ducking model the LED state machine follows.

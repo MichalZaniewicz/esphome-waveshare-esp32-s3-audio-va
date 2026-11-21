@@ -146,17 +146,15 @@ alone keeps USB flashing alive.
 Corroboration: `MICBIAS12` biases **only** channels 1 and 2, i.e. only those two
 have actual capsules.
 
-> **Unresolved:** the demo declares its AFE input format as `"RMNM"`
-> (slot0 = reference, slot1 = mic, slot2 = null, slot3 = mic), which does not
-> reconcile with a naive MIC1 to slot0 mapping. Possibly ES7210 slot packing
-> isn't 1:1, possibly copy-paste from a Korvo BSP. Verify before relying on it.
+**Measured TDM slot map** (ESPHome `es7210` with `tdm: true`, read with the
+"AEC slot N level" sensors): **slots 0 and 2 = the mics, slot 1 = the MIC3
+loopback, slot 3 = dead.** The vendor demo declares its AFE input as `"RMNM"`
+(slot0 = reference), which does not match; trust the measurement.
 
-**Hardware AEC is not usable from stock ESPHome on this board.** The demo packs
-4x16-bit channels into 2x32-bit I2S slots and unpacks them in software; ESPHome
-does not. This firmware takes a single mic channel and relies on ESPHome's
-software `noise_suppression_level` / `auto_gain` instead. The practical fallout:
-without AEC the mic hears the device's own speaker loudly, so barge-in features
-(a "stop" wake word during a reply) don't work here.
+**The loopback is weak.** At 0 dB a TTS reply reaches only about -50 dBFS on
+MIC3, too quiet for the canceller to model the echo. The firmware boosts MIC3
+to 30 dB (`aec_ref_gain`) and attenuates playback by 12 dB before the DAC, which
+puts the reference near -20 dBFS with headroom.
 
 ## Not used by this firmware
 
@@ -198,21 +196,20 @@ that, **ESPHome cannot run a single `i2s_audio` bus full-duplex**: a microphone
 and a speaker on the same bus each call `i2s_new_channel` on the port, and the
 second fails at runtime with `Parent bus is busy` (the speaker then crackles).
 
-The layout this firmware uses, all on stock ESPHome components:
+The layout this firmware uses: **one full-duplex, four-slot TDM bus** owned by
+the `aec_speexdsp` echo canceller, with the **ESP as the I2S master** and both
+codecs on stock ESPHome drivers (the ES7210 in TDM mode, ESPHome 2026.11.0+).
+Every 16 kHz frame carries the four ES7210 inputs in and the DAC samples out on
+the same clock, so the loopback lines up with the mic and the device's own
+playback can be cancelled.
 
-- **Two `i2s_audio` buses** (two I2S ports) over the shared GPIO13/14 (with
-  `allow_other_uses`). The **mic bus is the I2S master**, the **speaker bus is a
-  slave** reading its clock.
-- The mic is always capturing for the wake word, so as master it drives
-  BCLK/LRCK/MCLK **continuously** - exactly what a slave speaker and the ES8311
-  need. It also gives the mic a correct-rate stream.
-- The mic is pinned to **16-bit**: as master it sets the frame slot width, and
-  the i2s_audio default is 32-bit, which against the 16-bit DAC produces noise.
-
-Making the **ES8311** the master instead (a `force_master`-style patch, setting
-the codec's MSC bit) also works, but it feeds the ESP mic a wrong-rate stream
-that kills the wake word. The ESP-mastered two-bus layout above needs no patch.
-See `base/core.yaml` for the annotated config.
+Without echo cancellation, the layout that works on stock `i2s_audio` alone is
+**two buses** over the shared GPIO13/14 (with `allow_other_uses`): the **mic bus
+as the I2S master** (it always captures, so the clock never stops), the
+**speaker bus as a slave**, and the mic pinned to **16-bit** (the 32-bit default
+against the 16-bit DAC produces noise). Making the **ES8311** the master instead
+(a `force_master`-style patch) feeds the ESP mic a wrong-rate stream that kills
+the wake word. See `base/core.yaml` for the annotated config.
 
 ### ⚠️ Cold-boot failure of the ES7210 / LEDs: no verified fix
 
