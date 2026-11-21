@@ -169,6 +169,24 @@ What lives in `waveshare-va.yaml`:
 Pins and the audio format are substitutions too (in `base/core.yaml`), but you
 should not need them unless you are porting to another board.
 
+### Selecting the other microphone
+
+The firmware captures one microphone slot, **right** by default. If that input
+is weak or unresponsive, add this at the top level of `waveshare-va.yaml`
+(alongside `packages:` and `substitutions:`), then rebuild and install:
+
+```yaml
+microphone:
+  - id: !extend i2s_mics
+    channel: left
+```
+
+`!extend` changes the existing microphone from the remote core, so there's no
+need to copy or edit `base/core.yaml`. Remove the override, or set
+`channel: right`, to restore the default.
+
+Left and right are **I2S slot names**, not verified physical capsule positions.
+
 ### Wake words
 
 The firmware ships four wake word models: `alexa` (the default), `okay_nabu`,
@@ -256,6 +274,13 @@ time. Install it user-wide so any session picks it up:
 cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 ```
 
+## Contributors
+
+Thanks to everyone who sent code to this project:
+
+- <img src="https://github.com/clemenszwerg.png?size=40" width="20" height="20" alt=""> [@clemenszwerg](https://github.com/clemenszwerg): the ESPHome 2026.10 build fix (`const` audio files)
+- <img src="https://github.com/nikolai-matijevic.png?size=40" width="20" height="20" alt=""> [@nikolai-matijevic](https://github.com/nikolai-matijevic): selecting the other microphone with `!extend`, the fix for boards with a weak or dead right mic
+
 ## Credits
 
 - **[jensenbox](https://github.com/jensenbox/waveshare-esp32-s3-audio)**: the
@@ -263,5 +288,3 @@ cp -r skill/waveshare-esp32-s3-audio ~/.claude/skills/
 - **ESPHome**: everything the firmware is built out of.
 - **[Home Assistant Voice PE](https://github.com/esphome/home-assistant-voice-pe)**:
   the sounds, and the phase/ducking model the LED state machine follows.
-- **[clemenszwerg](https://github.com/clemenszwerg)**: diagnosed the ESPHome
-  2026.10 build break and found the `const` fix ([#11](https://github.com/MichalZaniewicz/esphome-waveshare-esp32-s3-audio-va/issues/11)).
