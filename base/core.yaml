@@ -89,7 +89,7 @@ substitutions:
   # canceller to model the echo. 30 dB puts it near -20 dBFS with headroom.
   # Options: 0 - 37.5 (3 dB steps up to 33). Lower it if "AEC reference peak"
   # gets near 32767 at full volume.
-  aec_ref_gain: 30db
+  aec_ref_gain: 24db
   # Canceller size. SpeexDSP puts its state in internal RAM, which the S3 has
   # little of: frame 256 / filter 1024 took 90 KB and left 10 KB free, and the
   # board crash-looped. Frame 128 / filter 512 (32 ms echo tail, enough for a
@@ -713,6 +713,13 @@ voice_assistant:
           - lambda: id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
           - script.execute: control_leds
   on_tts_start:
+    - lambda: |-
+        std::string text = x;
+        if (text.find("?") != std::string::npos || text.find("？") != std::string::npos) {
+          id(end_conversation_flag) = false;
+        } else {
+          id(end_conversation_flag) = true;
+        }
     - if:
         condition:
           lambda: 'return id(voice_assistant_phase) != ${voice_assist_replying_phase_id};'
@@ -737,11 +744,26 @@ voice_assistant:
         duration: 1.0s
     - if:
         condition:
-          lambda: return id(voice_assistant_phase) == ${voice_assist_error_phase_id};
+          lambda: return id(voice_assistant_phase) == ${voice_assist_error_phase_id} || id(end_conversation_flag);
         then:
-          - delay: 1s            # let the error colour linger a beat
-    - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
-    - script.execute: control_leds
+          - if:
+              condition:
+                lambda: return id(voice_assistant_phase) == ${voice_assist_error_phase_id};
+              then:
+                - delay: 1s
+          - lambda: id(end_conversation_flag) = false;
+          - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
+          - script.execute: control_leds
+        else:
+          - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
+          - script.execute: control_leds
+          - delay: 700ms
+          - voice_assistant.start:
+          - delay: 1s
+          - wait_until:
+              condition:
+                lambda: return id(voice_assistant_phase) == ${voice_assist_idle_phase_id};
+              timeout: 15s    
   on_timer_finished:
     - switch.turn_on: timer_ringing
     - lambda: |
@@ -1905,3 +1927,7 @@ binary_sensor:
             then:
               - logger.log: "BOOT long-press: entering deep sleep"
               - deep_sleep.enter: deep_sleep_ctrl
+globals:
+  - id: end_conversation_flag
+    type: bool
+    initial_value: 'false'
